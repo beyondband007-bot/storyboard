@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>鲸创科技 企业宣传片完整版分镜脚本</title>
+  <style>
+    :root {
+      --bg: #eef3f7;
+      --paper: rgba(255,255,255,.82);
+      --paper-strong: #ffffff;
+      --ink: #102330;
+      --muted: #586c79;
+      --line: rgba(16,35,48,.12);
+      --brand: #0f5d79;
+      --brand-soft: #dcebf1;
+      --accent: #b88a53;
+      --shadow: 0 24px 60px rgba(20,49,66,.12);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(184,138,83,.12), transparent 28%),
+        radial-gradient(circle at right 10% top 15%, rgba(15,93,121,.12), transparent 24%),
+        linear-gradient(180deg, #f4f7fa 0%, #eef3f7 48%, #e9eef3 100%);
+      font: 16px/1.85 "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+    }
+    .page {
+      width: min(1320px, calc(100vw - 40px));
+      margin: 28px auto 56px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 28px;
+      align-items: start;
+    }
+    .main { min-width: 0; }
+    .hero {
+      padding: 30px 34px;
+      border-radius: var(--radius-xl);
+      color: #eff7fa;
+      background:
+        linear-gradient(135deg, rgba(10,27,41,.96), rgba(16,63,84,.92)),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -28% auto;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.16), transparent 62%);
+      z-index: -1;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 20px;
+      align-items: center;
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: rgba(239,247,250,.68);
+    }
+    h1, h2, h3, h4 {
+      margin: 0;
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", "STSong", serif;
+      line-height: 1.3;
+    }
+    h1 {
+      font-size: clamp(28px, 3vw, 42px);
+      max-width: none;
+      line-height: 1.22;
+      white-space: normal;
+    }
+    h1 span { display: inline-block; }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .hero-meta span {
+      padding: 6px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      font-size: 12px;
+    }
+    .hero-panel {
+      display: grid;
+      gap: 10px;
+      align-content: center;
+    }
+    .stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(10px);
+      min-height: 78px;
+    }
+    .stat strong {
+      display: block;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .stat span {
+      color: rgba(239,247,250,.74);
+      font-size: 12px;
+    }
+    .content-section {
+      margin-top: 24px;
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      background: var(--paper);
+      border: 1px solid rgba(255,255,255,.65);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .section-head {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-kicker {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 12px;
+      letter-spacing: .14em;
+      color: var(--brand);
+    }
+    h2 {
+      font-size: clamp(28px, 2.7vw, 36px);
+      color: #102330;
+    }
+    h3 {
+      margin-top: 28px;
+      margin-bottom: 12px;
+      font-size: 23px;
+      color: #17384c;
+    }
+    h4 {
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-size: 18px;
+      color: #20495f;
+    }
+    p {
+      margin: 0 0 14px;
+      color: #203643;
+    }
+    .voiceover {
+      margin: 18px 0 20px;
+      padding: 20px 22px;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 18px 18px 0;
+      background: linear-gradient(180deg, rgba(184,138,83,.08), rgba(255,255,255,.72));
+      color: #2f3f48;
+    }
+    .voiceover p {
+      margin: 0;
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", serif;
+      font-size: 17px;
+      line-height: 1.95;
+    }
+    .bullet-list {
+      margin: 10px 0 18px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+    .bullet-list li {
+      position: relative;
+      padding: 14px 16px 14px 42px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(15,93,121,.05), rgba(255,255,255,.68));
+      border: 1px solid rgba(15,93,121,.09);
+    }
+    .bullet-list li::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 21px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 0 5px rgba(15,93,121,.12);
+    }
+    .table-card {
+      margin: 16px 0 22px;
+      padding: 10px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(235,241,246,.86));
+      border: 1px solid rgba(16,35,48,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .table-scroll {
+      overflow: auto;
+      border-radius: 14px;
+      background: var(--paper-strong);
+    }
+    table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(16,35,48,.08);
+      border-right: 1px solid rgba(16,35,48,.06);
+      vertical-align: top;
+      text-align: left;
+    }
+    th:last-child, td:last-child { border-right: none; }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #17384c;
+      color: #eff7fa;
+      font-weight: 600;
+      z-index: 1;
+    }
+    tbody tr:nth-child(even) td { background: rgba(239,244,247,.58); }
+    code {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: rgba(16,35,48,.08);
+      font-size: .92em;
+    }
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(255,255,255,.7);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .sidebar h2 {
+      margin-bottom: 14px;
+      font-size: 20px;
+    }
+    .toc {
+      display: grid;
+      gap: 8px;
+    }
+    .toc a {
+      text-decoration: none;
+      color: #244354;
+      border-radius: 12px;
+      transition: .18s ease;
+    }
+    .toc-main {
+      padding: 10px 12px;
+      background: rgba(15,93,121,.06);
+      font-weight: 600;
+    }
+    .toc-sub {
+      padding: 6px 10px 6px 22px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .toc a:hover {
+      color: var(--brand);
+      background: rgba(15,93,121,.1);
+    }
+    .sidebar-note {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    @media (max-width: 1180px) {
+      .page {
+        width: min(100vw - 28px, 100%);
+        grid-template-columns: minmax(0, 1fr) 272px;
+        gap: 18px;
+      }
+      .hero { padding: 24px 26px; }
+      .hero-grid { grid-template-columns: minmax(0, 1fr) 192px; }
+      h1 { font-size: clamp(24px, 2.9vw, 36px); }
+      .content-section { padding: 24px; }
+    }
+    @media (max-width: 980px) {
+      .page {
+        grid-template-columns: 1fr;
+        width: min(100vw - 20px, 100%);
+        gap: 14px;
+      }
+      .sidebar {
+        position: static;
+        order: 2;
+      }
+      .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .hero-panel {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .stat { min-height: 0; }
+    }
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 20px, 100%);
+        margin: 10px auto 28px;
+        gap: 14px;
+      }
+      .hero, .content-section, .sidebar {
+        padding: 16px;
+        border-radius: 18px;
+      }
+      .hero { padding: 18px 16px; }
+      .eyebrow {
+        margin-bottom: 8px;
+        font-size: 11px;
+        letter-spacing: .14em;
+      }
+      h1 {
+        font-size: clamp(22px, 7vw, 30px);
+        line-height: 1.18;
+      }
+      h1 span { display: block; }
+      .hero-panel { grid-template-columns: 1fr; }
+      .hero-meta {
+        margin-top: 14px;
+        gap: 6px;
+      }
+      .hero-meta span {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+      h2 { font-size: 24px; }
+      h3 { font-size: 18px; }
+      .voiceover p {
+        font-size: 15px;
+        line-height: 1.82;
+      }
+      .bullet-list li {
+        padding: 12px 14px 12px 36px;
+      }
+      .bullet-list li::before {
+        left: 14px;
+        top: 18px;
+      }
+      .table-card {
+        margin: 14px 0 18px;
+        padding: 8px;
+      }
+      table {
+        min-width: 640px;
+        font-size: 13px;
+      }
+      th, td { padding: 10px 12px; }
+    }
+    @media print {
+      body { background: #fff; }
+      .page {
+        width: 100%;
+        margin: 0;
+        display: block;
+      }
+      .sidebar { display: none; }
+      .hero, .content-section {
+        box-shadow: none;
+        background: #fff;
+        border: 1px solid #d9e1e8;
+        break-inside: avoid;
+      }
+      .content-section { margin-top: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main class="main">
+      <header class="hero" id="鲸创科技-企业宣传片完整版分镜脚本文档">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Storyboard Reading Edition</p>
+            <h1><span>鲸创科技 企业宣传片完整版分镜脚本</span></h1>
+            <div class="hero-meta">
+              <span>品牌宣传片</span>
+              <span>16:9 横版</span>
+              <span>3 分钟成片目标</span>
+              <span>年轻创意 / 反套路</span>
+            </div>
+          </div>
+          <aside class="hero-panel">
+            <div class="stat">
+              <strong>180s</strong>
+              <span>成片时长</span>
+            </div>
+            <div class="stat">
+              <strong>16</strong>
+              <span>镜头编号</span>
+            </div>
+            <div class="stat">
+              <strong>4 周</strong>
+              <span>后期 CG 与剪辑周期</span>
+            </div>
+          </aside>
+        </div>
+      </header>
+
+      <section class="content-section" id="1-项目信息与执行假设">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>1. 项目信息与执行假设</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>项目名称：</strong>鲸创科技 企业宣传片</li>
+          <li><strong>影片类型：</strong>品牌宣传片</li>
+          <li><strong>成片时长：</strong>3分钟（180秒）</li>
+          <li><strong>成片比例：</strong>16:9 横版</li>
+          <li><strong>风格基调：</strong>年轻创意、反套路、叙事直接</li>
+        </ul>
+        <h3 id="执行假设">执行假设</h3>
+        <ul class="bullet-list">
+          <li><strong>拍摄方式：</strong>实景拍摄（荒野、草地）+ 棚拍（办公室局部）+ CG后期（巨鲸、流体、数据墙、海浪）。</li>
+          <li><strong>演员需求：</strong>无传统对白演员。需1名女性舞者/设计师（表现肢体张力），2-3名年轻创意人员（群像展现），无需明星脸，重在肢体表现力与情绪感染力。</li>
+          <li><strong>制作周期预估：</strong>前期筹备2周，拍摄3天，后期CG与剪辑4周。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="2-参考样片方向分析">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>2. 参考样片方向分析</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>视觉参考：</strong>高饱和度色彩对撞（深蓝+炽橙/红+绿），自然广袤场景与人物肢体舒展的结合。</li>
+          <li><strong>情绪参考：</strong>自由、释放、打破束缚的呼吸感，拒绝僵硬呆板的企业摆拍。</li>
+          <li><strong>运镜参考：</strong>中景缓慢跟随与广角仰拍升格慢动作结合，强调舞蹈MV般的视觉张力与画面呼吸感。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="3-内容逻辑选择">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>3. 内容逻辑选择</h2>
+        </div>
+        <p>采用 <strong>「反差破局→直接解构→自由造浪」</strong> 的非线性情绪逻辑。摒弃流水账式铺陈，以“打破水缸”的直观动作开篇，将业务、团队、案例转化为“造浪”的具象化视觉，叙事直接，不绕弯子，每一帧都在输出态度与实力。</p>
+      </section>
+
+      <section class="content-section" id="4-创作前提">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>4. 创作前提</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>品牌视觉基因：</strong>提取Logo中“深蓝/浅蓝”、“鲸尾/海浪/C”的形态与色彩，作为全片核心视觉符号。</li>
+          <li><strong>色彩规范：</strong>画面从低饱和的灰暗（压抑）起步，随着破局瞬间，被高饱和的“炽橙色”入侵，最终走向深蓝与明亮的宽广色彩。</li>
+          <li><strong>节奏规范：</strong>叙事直接干脆，镜头切换拒绝拖泥带水。动静结合，爆发力与舒展感交替。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="5-创意主轴">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>5. 创意主轴</h2>
+        </div>
+        <blockquote class="voiceover">
+          <p>鲸创不是在既定规则里游泳的鱼，而是打破水缸、制造浪潮的鲸。<br>在乏味与套路充斥的行业里，鲸创用年轻无畏的创意和硬核的交付能力，打破沉闷，重新定义可能。我们的每一次出场，都是一次破界；我们的每一个项目，都在掀起波澜。</p>
+        </blockquote>
+      </section>
+
+      <section class="content-section" id="6-总旁白">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>6. 总旁白</h2>
+        </div>
+        <blockquote class="voiceover">
+          <p>习惯了在缸里游泳？<br>按部就班，循规蹈矩，在安全的边界里做所谓的“正确选择”。<br>但我们觉得，无聊就是最大的原罪。<br>水缸困不住鲸，规矩锁不住创意。<br>鲸创，破界而来。<br>我们用直击痛点的洞察，撕开业务迷局；<br>用硬核研发与极简设计，重新定义交付标准；<br>这里的团队，不打卡螺丝钉的枯燥，只释放创造者的自由。<br>当浪潮袭来，行业格局随之重塑。<br>别在缸里看海，和鲸创去造浪！</p>
+        </blockquote>
+      </section>
+
+      <section class="content-section" id="7-段落文案">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>7. 段落文案</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>第一段【企业定位】：破界</strong>（习惯了在缸里游泳？按部就班，循规蹈矩，在安全的边界里做所谓的“正确选择”。但我们觉得，无聊就是最大的原罪。水缸困不住鲸，规矩锁不住创意。鲸创，破界而来。）</li>
+          <li><strong>第二段【核心业务】：入侵</strong>（我们用直击痛点的洞察，撕开业务迷局；）</li>
+          <li><strong>第三段【团队能力】：释放</strong>（用硬核研发与极简设计，重新定义交付标准；这里的团队，不打卡螺丝钉的枯燥，只释放创造者的自由。）</li>
+          <li><strong>第四段【客户案例】：席卷</strong>（当浪潮袭来，行业格局随之重塑。）</li>
+          <li><strong>第五段【未来愿景】：造浪</strong>（别在缸里看海，和鲸创去造浪！）</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="8-分镜脚本表">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>8. 分镜脚本表</h2>
+        </div>
+        <div class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>镜头编号</th>
+                  <th>用途</th>
+                  <th>时长</th>
+                  <th>画面内容</th>
+                  <th>景别/机位/运镜</th>
+                  <th>场景/道具</th>
+                  <th>字幕/旁白</th>
+                  <th>转场</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>01</td><td>定位</td><td>8s</td><td>一个规整、透明的方形玻璃水缸置于荒野中，缸内水质浑浊死寂，几条灰色的鱼机械地绕圈游动。</td><td>远景 / 平视 / 缓慢推镜头</td><td>荒野、透明玻璃水缸</td><td>旁白：习惯了在缸里游泳？</td><td>硬切</td></tr>
+                <tr><td>02</td><td>定位</td><td>7s</td><td>镜头贴近缸壁，灰鱼无神的眼睛特写。缸壁倒映出窗外西装革履、刻板敲击键盘的模糊人影。</td><td>特写 / 仰视 / 固定</td><td>水缸内部、倒影</td><td>旁白：按部就班，循规蹈矩，在安全的边界里做所谓的“正确选择”。</td><td>闪白</td></tr>
+                <tr><td>03</td><td>定位</td><td>10s</td><td>画面突然剧烈震动，水面涌起巨浪。一只巨大的深蓝色鲸尾（呼应Logo形态）从上方猛地砸碎玻璃水缸，水花与玻璃碎屑四溅。</td><td>中景 / 平视 / 高速慢动作碎裂瞬间</td><td>荒野、水缸碎片</td><td>旁白：但我们觉得，无聊就是最大的原罪。</td><td>碎片遮挡转场</td></tr>
+                <tr><td>04</td><td>定位</td><td>10s</td><td>碎片落定，深蓝海水中巨鲸的虚影掠过，留下一道炽橙色的光轨，直冲云霄。冲击波瞬间将画面从灰暗洗为高饱和色彩。</td><td>全景 / 仰视 / 极速跟随</td><td>深蓝虚幻海洋</td><td>旁白：水缸困不住鲸，规矩锁不住创意。鲸创，破界而来。</td><td>墨滴晕染转场</td></tr>
+                <tr><td>05</td><td>定位</td><td>10s</td><td>炽橙色光轨炸裂，化作极具冲击力的光斑，直逼镜头。</td><td>特写 / 正视 / 极速推</td><td>纯色背景</td><td>旁白无</td><td>光线过曝转场</td></tr>
+                <tr><td>06</td><td>业务</td><td>12s</td><td>昏暗的办公室，堆积如山的文件。突然，一抹炽橙色从电脑屏幕中溢出，像墨滴入水般迅速蔓延，吞噬灰暗。</td><td>中景 / 平视 / 缓慢拉出</td><td>办公室、发光橙色流体</td><td>旁白：我们用直击痛点的洞察，撕开业务迷局；</td><td>相似色块匹配剪辑</td></tr>
+                <tr><td>07</td><td>业务</td><td>13s</td><td>炽橙色流体在超现实空间中穿梭，分裂成代表不同业务的三个模块：发光的数据节点（研发）、流线的极简模型（设计）、严密的齿轮组（交付），相互咬合运转。</td><td>近景 / 俯视 / 环绕运镜</td><td>超现实空间、业务视觉化模型</td><td>字幕：主营产品·问题解决 / 旁白无</td><td>快速平移转场</td></tr>
+                <tr><td>08</td><td>业务</td><td>10s</td><td>三个模块瞬间合流，化作一把锐利的深蓝色光刃，切开面前阻挡的巨大数据乱码墙，露出墙后明亮的天地。</td><td>中景 / 平视 / 快速推进</td><td>超现实空间、数据墙</td><td>旁白：撕开业务迷局；</td><td>光线过曝转场</td></tr>
+                <tr><td>09</td><td>团队</td><td>15s</td><td>场景豁然开朗，广阔的青翠草地与湛蓝天空。一群身着深蓝与炽橙撞色服饰的年轻人，正自由地奔跑、舒展肢体、抛掷模型。画面充满红绿蓝的高饱和对比与自由感。</td><td>全景 / 平视 / 缓慢摇镜头</td><td>开阔草地、蓝天</td><td>旁白：用硬核研发与极简设计，重新定义交付标准；</td><td>无缝接续</td></tr>
+                <tr><td>10</td><td>团队</td><td>15s</td><td>焦点聚于一位女性创意人，她赤足踏在草地上，猛地向上跃起，双臂舒展拥抱天空，动作张力十足，裙摆/衣角飞扬。</td><td>中景 / 仰视 / 升格慢动作</td><td>开阔草地</td><td>字幕：研发·设计·交付·服务</td><td>硬切</td></tr>
+                <tr><td>11</td><td>团队</td><td>7s</td><td>两人击掌，碰撞点爆发出一圈彩色的涟漪波纹，波纹迅速扩散至整个画面。</td><td>特写 / 平视 / 固定</td><td>击掌特写</td><td>旁白：这里的团队，不打卡螺丝钉的枯燥，只释放创造者的自由。</td><td>涟漪波纹转场</td></tr>
+                <tr><td>12</td><td>案例</td><td>13s</td><td>草地上的彩色涟漪无缝转化为深蓝色海面上的惊涛骇浪。巨浪席卷而过，沿途浮现出知名客户的Logo光影与行业地标建筑的剪影，随浪花一同崛起。</td><td>远景 / 俯视 / 跟随海浪推进</td><td>深蓝海洋、地标剪影</td><td>字幕：代表客户·合作成果 / 旁白：当浪潮袭来，行业格局随之重塑。</td><td>形状遮罩转场</td></tr>
+                <tr><td>13</td><td>案例</td><td>12s</td><td>海浪冲刷过海岸，沙滩上留下熠熠生辉的成果结晶（用抽象的几何体代表），海浪退去，结晶依然屹立。</td><td>近景 / 平视 / 缓慢拉出</td><td>海滩、结晶体</td><td>旁白：当浪潮袭来，行业格局随之重塑。</td><td>硬切</td></tr>
+                <tr><td>14</td><td>愿景</td><td>15s</td><td>视角抬起，不再看海岸，而是直面浩瀚无垠的深蓝星海。一条巨大的发光蓝鲸跃出海面，带起漫天水花，姿态优美而充满力量。</td><td>远景 / 仰视 / 缓慢升起</td><td>宇宙/深海意象交汇处</td><td>旁白：别在缸里看海，</td><td>黑屏停顿</td></tr>
+                <tr><td>15</td><td>愿景</td><td>8s</td><td>纯黑背景。鲸创科技Logo亮起，深蓝与浅蓝交织，伴随水波纹光晕。</td><td>全景 / 正视 / 固定</td><td>纯黑背景</td><td>旁白无</td><td>渐黑</td></tr>
+                <tr><td>16</td><td>愿景</td><td>15s</td><td>黑屏打出核心Slogan，伴随一声沉重的鲸鸣与水花音效。</td><td>全景 / 正视 / 固定</td><td>纯黑背景</td><td>字幕：别在缸里看海，和鲸创去造浪 / 旁白：和鲸创去造浪！</td><td>渐黑</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-section" id="9-拍摄方式建议">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>9. 拍摄方式建议</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>实拍部分：</strong>草地奔跑与跃起镜头，建议使用Alexa Mini LF或同级别电影机，搭配变形宽银幕镜头，获取极佳的画质与边缘拉伸张力。升格拍摄（48fps-96fps）以捕捉肢体舒展细节。</li>
+          <li><strong>棚拍部分：</strong>办公室局部及击掌特写，采用高对比度布光，强调阴影与高光切割。</li>
+          <li><strong>CG部分：</strong>水缸碎裂、巨鲸虚影、流体业务模块、海浪席卷，建议采用Unreal Engine 5进行实时渲染预演，Houdini制作流体与破碎特效，确保视觉冲击力达到电影级质感。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="10-执行难点预警">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>10. 执行难点预警</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>水缸碎裂的物理真实性：</strong>CG碎裂容易显得轻飘，需增加玻璃厚度质感与水流的重量感，配合实拍荒野的环境光影进行高级合成。</li>
+          <li><strong>高饱和色彩的控制：</strong>深蓝与炽橙的撞色若处理不当易显廉价，需在调色阶段严格规范色彩空间，确保橙色的通透感与深蓝的沉稳感并存。</li>
+          <li><strong>自然光拍摄的一致性：</strong>草地场景受天气影响大，需预留足够的晴天拍摄日，并备足大功率镝灯以压制正午硬光或补足阴天缺乏的光影层次。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="11-交付分工建议">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>11. 交付分工建议</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>导演组：</strong>把控整体视觉调性，特别是演员肢体动作的指导，必须脱离“演”的痕迹，达到舞蹈般的自然张力。</li>
+          <li><strong>美术组：</strong>重点把控服装的撞色搭配（深蓝/炽橙），以及办公室场景的做旧与压抑感构建。</li>
+          <li><strong>后期CG组：</strong>最重任务量环节。需尽早介入前期分镜评审，确保巨鲸、流体等核心视觉元素的资产精度达标。</li>
+          <li><strong>声音设计：</strong>本片音乐音效叙事极重。需定制化配乐，从低频压抑到电子爆发再到宽广弦乐，必须与画面节奏帧级对齐。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="12-统一表达归纳">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>12. 统一表达归纳</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>视觉统一：</strong>全片以“水/海”为视觉连贯线索（水缸死水 → 流体入侵 → 涟漪扩散 → 惊涛骇浪 → 鲸跃星海），首尾呼应。</li>
+          <li><strong>色彩统一：</strong>从灰暗（无趣）到深蓝+炽橙（破界与创意），色彩即情绪。</li>
+          <li><strong>态度统一：</strong>文案与画面高度咬合，“别在缸里看海”不仅是口号，更是全片每一镜都在践行的视觉逻辑——打破空间，拒绝局促。</li>
+        </ul>
+      </section>
+
+      <section class="content-section" id="13-可拆条版本建议">
+        <div class="section-head">
+          <span class="section-kicker">SECTION</span>
+          <h2>13. 可拆条版本建议</h2>
+        </div>
+        <ul class="bullet-list">
+          <li><strong>15秒社交裂变版（反套路预告）：</strong>提取镜头01-04（水缸碎裂+鲸尾砸下），直接释放Slogan“别在缸里看海，和鲸创去造浪”，以最强视觉反差引发好奇。</li>
+          <li><strong>30秒业务实力版（ToB精准投放）：</strong>提取镜头06-08（橙色流体入侵+业务模块咬合+光刃切墙），配以业务字幕，直击客户痛点，展示硬核交付能力。</li>
+          <li><strong>60秒品牌态度版（招聘/宣讲）：</strong>提取镜头09-11（草地自由奔跑+击掌涟漪）+ 镜头14（巨鲸跃出），重点传达团队氛围与品牌愿景，强化“释放创造者自由”的诉求。</li>
+        </ul>
+      </section>
+    </main>
+
+    <aside class="sidebar">
+      <h2>目录</h2>
+      <nav class="toc">
+        <a class="toc-main" href="#1-项目信息与执行假设">1. 项目信息与执行假设</a>
+        <a class="toc-sub" href="#执行假设">执行假设</a>
+        <a class="toc-main" href="#2-参考样片方向分析">2. 参考样片方向分析</a>
+        <a class="toc-main" href="#3-内容逻辑选择">3. 内容逻辑选择</a>
+        <a class="toc-main" href="#4-创作前提">4. 创作前提</a>
+        <a class="toc-main" href="#5-创意主轴">5. 创意主轴</a>
+        <a class="toc-main" href="#6-总旁白">6. 总旁白</a>
+        <a class="toc-main" href="#7-段落文案">7. 段落文案</a>
+        <a class="toc-main" href="#8-分镜脚本表">8. 分镜脚本表</a>
+        <a class="toc-main" href="#9-拍摄方式建议">9. 拍摄方式建议</a>
+        <a class="toc-main" href="#10-执行难点预警">10. 执行难点预警</a>
+        <a class="toc-main" href="#11-交付分工建议">11. 交付分工建议</a>
+        <a class="toc-main" href="#12-统一表达归纳">12. 统一表达归纳</a>
+        <a class="toc-main" href="#13-可拆条版本建议">13. 可拆条版本建议</a>
+      </nav>
+      <div class="sidebar-note">
+        这版 HTML 已按你给的“东风”模板风格重构：深色 hero、浅色正文卡片、右侧目录、表格阅读版布局都对齐了模板气质。<br><br>
+        如果你愿意，我下一步可以继续帮你做成更像“阅读提案稿”的精修版，或者直接再生成一版更适合打印输出的 PDF 风格版。
+      </div>
+    </aside>
+  </div>
+</body>
+</html>

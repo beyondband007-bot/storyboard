@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>东风环境 城市管家一体化方案宣传片分镜脚本</title>
+  <style>
+    :root {
+      --bg: #eef3f7;
+      --paper: rgba(255,255,255,.82);
+      --paper-strong: #ffffff;
+      --ink: #102330;
+      --muted: #586c79;
+      --line: rgba(16,35,48,.12);
+      --brand: #0f5d79;
+      --brand-soft: #dcebf1;
+      --accent: #b88a53;
+      --shadow: 0 24px 60px rgba(20,49,66,.12);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(184,138,83,.12), transparent 28%),
+        radial-gradient(circle at right 10% top 15%, rgba(15,93,121,.12), transparent 24%),
+        linear-gradient(180deg, #f4f7fa 0%, #eef3f7 48%, #e9eef3 100%);
+      font: 16px/1.85 "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+    }
+    .page {
+      width: min(1320px, calc(100vw - 40px));
+      margin: 28px auto 56px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 28px;
+      align-items: start;
+    }
+    .main {
+      min-width: 0;
+    }
+    .hero {
+      padding: 30px 34px;
+      border-radius: var(--radius-xl);
+      color: #eff7fa;
+      background:
+        linear-gradient(135deg, rgba(10,27,41,.96), rgba(16,63,84,.92)),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -10% -28% auto;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.16), transparent 62%);
+      z-index: -1;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      gap: 20px;
+      align-items: center;
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: rgba(239,247,250,.68);
+    }
+    h1, h2, h3, h4 {
+      margin: 0;
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", "STSong", serif;
+      line-height: 1.3;
+    }
+    h1 {
+      font-size: clamp(28px, 3vw, 42px);
+      max-width: none;
+      line-height: 1.22;
+      white-space: normal;
+    }
+    h1 span {
+      display: inline-block;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .hero-meta span {
+      padding: 6px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      font-size: 12px;
+    }
+    .hero-panel {
+      display: grid;
+      gap: 10px;
+      align-content: center;
+    }
+    .stat {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      backdrop-filter: blur(10px);
+      min-height: 78px;
+    }
+    .stat strong {
+      display: block;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .stat span {
+      color: rgba(239,247,250,.74);
+      font-size: 12px;
+    }
+    .content-section {
+      margin-top: 24px;
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      background: var(--paper);
+      border: 1px solid rgba(255,255,255,.65);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .section-head {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-kicker {
+      display: inline-block;
+      margin-bottom: 10px;
+      font-size: 12px;
+      letter-spacing: .14em;
+      color: var(--brand);
+    }
+    h2 {
+      font-size: clamp(28px, 2.7vw, 36px);
+      color: #102330;
+    }
+    h3 {
+      margin-top: 28px;
+      margin-bottom: 12px;
+      font-size: 23px;
+      color: #17384c;
+    }
+    h4 {
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-size: 18px;
+      color: #20495f;
+    }
+    p {
+      margin: 0 0 14px;
+      color: #203643;
+    }
+    .voiceover {
+      margin: 18px 0 20px;
+      padding: 20px 22px;
+      border-left: 4px solid var(--accent);
+      border-radius: 0 18px 18px 0;
+      background: linear-gradient(180deg, rgba(184,138,83,.08), rgba(255,255,255,.72));
+      color: #2f3f48;
+    }
+    .voiceover p {
+      margin: 0;
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", serif;
+      font-size: 17px;
+      line-height: 1.95;
+    }
+    .bullet-list {
+      margin: 10px 0 18px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+    .bullet-list li {
+      position: relative;
+      padding: 14px 16px 14px 42px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(15,93,121,.05), rgba(255,255,255,.68));
+      border: 1px solid rgba(15,93,121,.09);
+    }
+    .bullet-list li::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 21px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 0 5px rgba(15,93,121,.12);
+    }
+    .table-card {
+      margin: 16px 0 22px;
+      padding: 10px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(235,241,246,.86));
+      border: 1px solid rgba(16,35,48,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }
+    .table-scroll {
+      overflow: auto;
+      border-radius: 14px;
+      background: var(--paper-strong);
+    }
+    table {
+      width: 100%;
+      min-width: 860px;
+      border-collapse: collapse;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(16,35,48,.08);
+      border-right: 1px solid rgba(16,35,48,.06);
+      vertical-align: top;
+      text-align: left;
+    }
+    th:last-child, td:last-child { border-right: none; }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #17384c;
+      color: #eff7fa;
+      font-weight: 600;
+      z-index: 1;
+    }
+    tbody tr:nth-child(even) td {
+      background: rgba(239,244,247,.58);
+    }
+    code {
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: rgba(16,35,48,.08);
+      font-size: .92em;
+    }
+    .sidebar {
+      position: sticky;
+      top: 24px;
+      align-self: start;
+      padding: 20px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(255,255,255,.7);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+    .sidebar h2 {
+      margin-bottom: 14px;
+      font-size: 20px;
+    }
+    .toc {
+      display: grid;
+      gap: 8px;
+    }
+    .toc a {
+      text-decoration: none;
+      color: #244354;
+      border-radius: 12px;
+      transition: .18s ease;
+    }
+    .toc-main {
+      padding: 10px 12px;
+      background: rgba(15,93,121,.06);
+      font-weight: 600;
+    }
+    .toc-sub {
+      padding: 6px 10px 6px 22px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .toc a:hover {
+      color: var(--brand);
+      background: rgba(15,93,121,.1);
+    }
+    .sidebar-note {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    @media (max-width: 1180px) {
+      .page {
+        width: min(100vw - 28px, 100%);
+        grid-template-columns: minmax(0, 1fr) 272px;
+        gap: 18px;
+      }
+      .hero {
+        padding: 24px 26px;
+      }
+      .hero-grid {
+        grid-template-columns: minmax(0, 1fr) 192px;
+      }
+      h1 {
+        font-size: clamp(24px, 2.9vw, 36px);
+      }
+      .content-section {
+        padding: 24px;
+      }
+    }
+    @media (max-width: 980px) {
+      .page {
+        grid-template-columns: 1fr;
+        width: min(100vw - 20px, 100%);
+        gap: 14px;
+      }
+      .sidebar {
+        position: static;
+        order: 2;
+      }
+      .hero-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .hero-panel {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .stat {
+        min-height: 0;
+      }
+    }
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 20px, 100%);
+        margin: 10px auto 28px;
+        gap: 14px;
+      }
+      .hero, .content-section, .sidebar {
+        padding: 16px;
+        border-radius: 18px;
+      }
+      .hero {
+        padding: 18px 16px;
+      }
+      .eyebrow {
+        margin-bottom: 8px;
+        font-size: 11px;
+        letter-spacing: .14em;
+      }
+      h1 {
+        font-size: clamp(22px, 7vw, 30px);
+        line-height: 1.18;
+      }
+      h1 span {
+        display: block;
+      }
+      .hero-panel {
+        grid-template-columns: 1fr;
+      }
+      .hero-meta {
+        margin-top: 14px;
+        gap: 6px;
+      }
+      .hero-meta span {
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+      h2 {
+        font-size: 24px;
+      }
+      h3 {
+        font-size: 18px;
+      }
+      .voiceover p {
+        font-size: 15px;
+        line-height: 1.82;
+      }
+      .bullet-list li {
+        padding: 12px 14px 12px 36px;
+      }
+      .bullet-list li::before {
+        left: 14px;
+        top: 18px;
+      }
+      .table-card {
+        margin: 14px 0 18px;
+        padding: 8px;
+      }
+      table {
+        min-width: 640px;
+        font-size: 13px;
+      }
+      th, td {
+        padding: 10px 12px;
+      }
+    }
+    @media print {
+      body {
+        background: #fff;
+      }
+      .page {
+        width: 100%;
+        margin: 0;
+        display: block;
+      }
+      .sidebar {
+        display: none;
+      }
+      .hero, .content-section {
+        box-shadow: none;
+        background: #fff;
+        border: 1px solid #d9e1e8;
+        break-inside: avoid;
+      }
+      .content-section {
+        margin-top: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main class="main">
+      
+<header class="hero" id="东风环境-城市管家-一体化方案宣传片分镜脚本">
+  <div class="hero-grid">
+    <div>
+      <p class="eyebrow">Storyboard Reading Edition</p>
+      <h1><span>东风环境“城市管家”一体化方案</span><br><span>宣传片分镜脚本</span></h1>
+      <div class="hero-meta">
+        <span>宣传片分镜脚本</span>
+        <span>HTML 阅读版</span>
+        <span>适合浏览器阅读与打印</span>
+      </div>
+    </div>
+    <aside class="hero-panel">
+      <div class="stat">
+        <strong>8</strong>
+        <span>主章节</span>
+      </div>
+      <div class="stat">
+        <strong>29</strong>
+        <span>镜头节点</span>
+      </div>
+      <div class="stat">
+        <strong>3 min</strong>
+        <span>成片目标</span>
+      </div>
+    </aside>
+  </div>
+</header>
+
+<section class="content-section" id="一-创作前提">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>一、创作前提</h2></div>
+<h3 id="1-项目理解">1. 项目理解</h3>
+<p>本片面向政府客户与城市治理相关决策者，核心不是单独介绍某一台设备，而是把 5 个产品和 1 个中控大屏，整合成一套“东风环境城市管家一体化方案”。</p>
+<p>在 3 分钟左右的篇幅中，影片既要体现方案级格局，也要保留足够的情绪铺垫、城市呼吸感与场景停顿，让画面更有感染力，而不是纯参数堆叠。</p>
+<p>片中保留各产品原有形态与功能逻辑，但在品牌识别、命名口径、调度关系、叙事归属上，统一纳入“东风环境城市管家”体系，形成“地面、水面、空中、安防、地下”五位一体的城市治理闭环。</p>
+<h3 id="2-已吸收资料">2. 已吸收资料</h3>
+<ul class="bullet-list"><li>现有宣传片文案初稿：已提炼 5 类产品功能与平台统管逻辑。</li><li><code>城市管家汇报（2026.3.8）.pptx</code>：已提炼政府汇报口径，包括“1+N”“双智赋能”“一网统管”“分钟级闭环”等关键词。</li><li><code>无人作业产品.mp4</code>：已提炼样片风格，判断其为“真实场景产品演示 + 蓝色科技 HUD 包装 + 节奏稳健”的表达方式。</li><li><code>中控大屏.jpg</code>：作为片中总控中心实景锚点。</li></ul>
+<h3 id="3-成片目标">3. 成片目标</h3>
+<ul class="bullet-list"><li>建议时长：3 分钟左右</li><li>成片比例：16:9 横版</li><li>风格基调：科技感、政务感、真实感并重</li><li>文案气质：有散文感，但不过度抒情；有画面感，但不空泛</li><li>镜头原则：能实拍尽量实拍，AI 用于转场、系统可视化与氛围增强</li></ul>
+</section>
+<section class="content-section" id="二-创意主轴">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>二、创意主轴</h2></div>
+<h3 id="1-核心表达">1. 核心表达</h3>
+<p>城市治理，不是一个设备解决一个问题，而是从城市运行的多个维度同时发生、彼此协同。东风环境以五类无人智能装备和一个智慧调度中心，构建起全域感知、统一调度、闭环处置的城市管家一体化方案。</p>
+<h3 id="2-情绪结构">2. 情绪结构</h3>
+<ul class="bullet-list"><li>开篇：从城市苏醒切入，让治理像晨光一样自然发生</li><li>中段：五类产品依次进入场景，但不是“挨个介绍”，而是从一个治理空间自然过渡到另一个治理空间</li><li>结尾：由设备回到平台，再由平台回到城市，落到治理价值</li></ul>
+<h3 id="3-氛围关键词">3. 氛围关键词</h3>
+<p>晨光、秩序、呼吸感、蓝白灰、真实城市、自然过渡、安静而有力、现代治理。</p>
+</section>
+<section class="content-section" id="三-3-分钟版总旁白">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>三、3 分钟版总旁白</h2></div>
+<blockquote class="voiceover"><p>天光渐亮，城市开始舒展它一天的脉络。<br>街道等待被唤醒，水面等待恢复清澈，<br>远处的天际线之上，风险与变化也在悄然发生。<br>有人看得见的地方，需要被守护；<br>目光不易抵达的地方，同样如此。<br>&nbsp;<br>一座城市的有序运行，<br>从来不是某一个场景的独立完成，<br>而是道路、水域、空中、街区与地下空间之间，<br>更及时的感知，更高效的协同，<br>以及更从容的处置。<br>&nbsp;<br>东风环境，<br>以五类无人智能装备为治理触角，<br>以城市管家智慧调度中心为数字中枢，<br>构建覆盖地面、水面、空中、安防、地下的<br>城市管家一体化方案。<br>&nbsp;<br>让分散的任务被统一调度，<br>让连续的场景形成闭环联动，<br>让城市治理，从被动响应，走向主动感知。<br>&nbsp;<br>东风环境，<br>让城市运行更高效，<br>让城市治理更智慧。</p></blockquote>
+</section>
+<section class="content-section" id="四-产品段落文案">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>四、产品段落文案</h2></div>
+<h3 id="1-无人驾驶清扫车">1. 无人驾驶清扫车</h3>
+<blockquote class="voiceover"><p>从晨光里的第一条道路开始，<br>清洁，不再只是重复的劳作。<br>它自主前行，也自主完成清扫与回航，<br>让地面的秩序，先一步回到城市之中。</p></blockquote>
+<h3 id="2-水面无人清洁船">2. 水面无人清洁船</h3>
+<blockquote class="voiceover"><p>当岸上的洁净被延伸，<br>水面的清澈也有了新的守护方式。<br>它贴岸而行，自动回收，稳定作业，<br>让城市的水域，保持应有的澄明。</p></blockquote>
+<h3 id="3-空地一体智能巡查系统">3. 空地一体智能巡查系统</h3>
+<blockquote class="voiceover"><p>而在更高处，<br>一双更开阔的眼睛，正在俯瞰城市。<br>起飞、巡查、识别、回传，<br>让风险更早被发现，让处置更早被启动。</p></blockquote>
+<h3 id="4-智能安防巡逻机器人">4. 智能安防巡逻机器人</h3>
+<blockquote class="voiceover"><p>当视野从高空回到街区，<br>守护，也需要更贴近日常。<br>它穿行于园区、社区与广场之间，<br>让巡逻、识别、告警与对讲，融入每一次平常经过。</p></blockquote>
+<h3 id="5-管道检测机器人">5. 管道检测机器人</h3>
+<blockquote class="voiceover"><p>再往下，是城市不曾喧哗的另一面。<br>在地下管网深处，<br>它看清隐患，记录依据，持续前行，<br>让看不见的生命线，也始终处于守护之中。</p></blockquote>
+<h3 id="6-智慧调度中心">6. 智慧调度中心</h3>
+<blockquote class="voiceover"><p>当五类装备同时在线，<br>城市运行便拥有了更清晰的坐标与节奏。<br>一屏总览，一网统管，<br>让设备、任务、数据与处置，回到同一条治理链路之上。</p></blockquote>
+</section>
+<section class="content-section" id="五-分镜脚本">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>五、分镜脚本</h2></div>
+<h3 id="序列-a-城市苏醒">序列 A：城市苏醒</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>1</td><td>开篇建立氛围</td><td>8s</td><td>清晨城市航拍，晨光掠过楼宇、道路、河道、公园</td><td>大远景，航拍缓慢前推</td><td>城市地标、道路、水体</td><td>旁白：天光渐亮，城市开始舒展它一天的脉络。</td><td>淡入</td></tr><tr><td>2</td><td>铺垫城市呼吸感</td><td>8s</td><td>路边树影、空旷步道、微波水面、街区清晨的人流</td><td>中远景，稳定器平移</td><td>道路、水岸、街区</td><td>旁白：街道等待被唤醒，水面等待恢复清澈。</td><td>柔和切换</td></tr><tr><td>3</td><td>建立治理需求</td><td>8s</td><td>落叶、纸屑、漂浮物、远处高点、街区角落、井盖等细节蒙太奇</td><td>中近景混剪</td><td>多场景细节</td><td>旁白：有人看得见的地方，需要被守护；目光不易抵达的地方，同样如此。</td><td>匹配切</td></tr><tr><td>4</td><td>引出中枢</td><td>8s</td><td>中控中心实景，大屏亮起，城市地图与任务图层逐步加载</td><td>大全景到中景，轻推</td><td>智慧调度中心、大屏</td><td>字幕：东风环境 城市管家智慧调度中心</td><td>界面擦切</td></tr></tbody></table></div></div>
+<p>开篇参考原则：</p>
+<ul class="bullet-list"><li>只借“城市苏醒，治理同步发生”的气口，不借原文措辞。</li><li>开场先让观众进入城市状态，再进入方案状态。</li><li>品牌不要抢在氛围前面出现。</li></ul>
+<h3 id="序列-b-从道路到水域">序列 B：从道路到水域</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>5</td><td>引出地面保洁</td><td>6s</td><td>道路边角、落叶、纸屑、清晨未清扫前的真实路面</td><td>近景，低机位扫过</td><td>市政道路/园区道路</td><td>旁白：从晨光里的第一条道路开始，清洁，不再只是重复的劳作。</td><td>匹配切</td></tr><tr><td>6</td><td>清扫车出场</td><td>8s</td><td>无人驾驶清扫车在晨光中驶入，真实尺度与路线清晰</td><td>中景正前跟拍</td><td>宽路面、品牌贴装</td><td>字幕：东风环境 无人驾驶清扫车</td><td>直切</td></tr><tr><td>7</td><td>核心特征展示</td><td>8s</td><td>边刷归拢、主刷清扫、垃圾收纳、稳定行驶</td><td>特写 + 侧跟拍</td><td>路沿、刷盘组件</td><td>旁白：它自主前行，也自主完成清扫与回航。</td><td>动作切</td></tr><tr><td>8</td><td>接入系统</td><td>6s</td><td>车辆路径线、状态回传、任务信息 HUD 叠加</td><td>45 度中景，侧跟拍</td><td>路面蓝色路径线</td><td>字幕：在线作业 / 路径规划 / 状态回传</td><td>HUD 叠化</td></tr><tr><td>9</td><td>由地面自然过渡到水面</td><td>6s</td><td>路边积水、雨篦子、水流汇入河道，镜头顺势抬升到开阔水域</td><td>特写接升格转中景</td><td>排水口、河道、公园湖面</td><td>旁白：当岸上的洁净被延伸，水面的清澈，也有了新的守护方式。</td><td>流体转场</td></tr><tr><td>10</td><td>无人船出场</td><td>8s</td><td>水面无人清洁船离岸前行，贴近岸线</td><td>中远景，岸边侧拍</td><td>河道/景观湖</td><td>字幕：东风环境 水面无人清洁船</td><td>直切</td></tr><tr><td>11</td><td>核心特征展示</td><td>8s</td><td>自动回收漂浮物、贴岸稳定航行、作业轨迹清晰</td><td>特写 + 俯拍</td><td>漂浮物、岸线</td><td>旁白：它贴岸而行，自动回收，稳定作业。</td><td>切镜</td></tr><tr><td>12</td><td>自动补能与回传</td><td>6s</td><td>无人船靠泊补能，平台出现任务完成提示</td><td>中景静稳机位</td><td>岸基充电装置</td><td>字幕：自动靠泊 / 自动充电 / 任务回传</td><td>HUD 光效</td></tr></tbody></table></div></div>
+<p>转场说明：</p>
+<ul class="bullet-list"><li>这里参考初稿“地面洁净后自然引出水面治理”的思路，但改成更柔和的画面递进。</li><li>重点不是介绍第二个产品，而是让治理边界自然从陆地扩展到水域。</li></ul>
+<h3 id="序列-c-从水域到高空">序列 C：从水域到高空</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>13</td><td>抬升视野</td><td>6s</td><td>水面任务点在中控界面被锁定，数据线向上延展至城市上空</td><td>中控界面转城市俯瞰</td><td>大屏界面、城市地图</td><td>旁白：而在更高处，一双更开阔的眼睛，正在俯瞰城市。</td><td>数据流转场</td></tr><tr><td>14</td><td>无人机系统出场</td><td>8s</td><td>机场舱盖开启，无人机升空</td><td>中景到仰拍，轻推</td><td>机场箱体、部署点</td><td>字幕：东风环境 空地一体智能巡查系统</td><td>直切</td></tr><tr><td>15</td><td>核心特征展示</td><td>8s</td><td>可见光、长焦、热成像、定点巡查画面叠加</td><td>中景转画中画</td><td>电力、道路、建筑</td><td>旁白：起飞、巡查、识别、回传，让风险更早被发现。</td><td>UI 切换</td></tr><tr><td>16</td><td>平台联动</td><td>6s</td><td>中控大屏自动标记异常点并触发联动任务</td><td>大屏特写</td><td>任务弹窗</td><td>字幕：发现即上报 / 研判即联动</td><td>叠化</td></tr></tbody></table></div></div>
+<p>转场说明：</p>
+<ul class="bullet-list"><li>参考初稿里“高空之眼”的思路，但文案不使用类似表述。</li><li>从水面到空中，不是生硬切换，而是让视野被自然打开。</li></ul>
+<h3 id="序列-d-从高空回到街区">序列 D：从高空回到街区</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>17</td><td>视野收束到近场</td><td>6s</td><td>航拍视角缓慢落回园区、社区、广场等地面空间</td><td>高位转中景</td><td>园区/社区夜景</td><td>旁白：当视野从高空回到街区，守护，也需要更贴近日常。</td><td>下降转场</td></tr><tr><td>18</td><td>巡逻机器人出场</td><td>8s</td><td>机器人沿步道巡航，空间关系真实可信</td><td>中景侧跟拍</td><td>步道、广场、灯光环境</td><td>字幕：东风环境 智能安防巡逻机器人</td><td>直切</td></tr><tr><td>19</td><td>核心特征展示</td><td>8s</td><td>变焦锁定、夜视、喊话、告警信息叠加</td><td>中景到特写</td><td>云台、补光</td><td>旁白：它穿行于园区、社区与广场之间，让巡逻、识别、告警与对讲，融入每一次平常经过。</td><td>监控界面转场</td></tr><tr><td>20</td><td>人机共处生活化镜头</td><td>6s</td><td>群众自然经过，机器人礼让后继续巡航</td><td>中景平移</td><td>社区/公园</td><td>字幕：低扰动巡逻 / 多场景适配</td><td>柔和擦切</td></tr></tbody></table></div></div>
+<p>转场说明：</p>
+<ul class="bullet-list"><li>参考初稿中“从高空瞭望回到近场守护”的递进关系。</li><li>这里要让观众感到守护从宏观感知，落回到日常生活本身。</li></ul>
+<h3 id="序列-e-从地表到地下">序列 E：从地表到地下</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>21</td><td>下潜进入地下空间</td><td>6s</td><td>夜色中的道路、井盖、水痕，镜头向下穿入地下管网空间</td><td>特写转下潜</td><td>井盖、管道入口</td><td>旁白：再往下，是城市不曾喧哗的另一面。</td><td>下潜转场</td></tr><tr><td>22</td><td>管道机器人出场</td><td>8s</td><td>管道检测机器人在管道中前行，缆线同步释放</td><td>中近景，低机位跟拍</td><td>管道、缆线车</td><td>字幕：东风环境 管道检测机器人</td><td>直切</td></tr><tr><td>23</td><td>核心特征展示</td><td>8s</td><td>裂缝识别、缺陷测量、数据记录界面叠加</td><td>第一视角 + 终端特写</td><td>管壁裂缝、终端界面</td><td>旁白：它看清隐患，记录依据，持续前行。</td><td>UI 叠加</td></tr><tr><td>24</td><td>上传平台</td><td>6s</td><td>检测报告自动生成并进入中控大屏</td><td>终端特写转大屏</td><td>监控电脑、大屏</td><td>字幕：检测报告自动归档</td><td>数据粒子转场</td></tr></tbody></table></div></div>
+<p>转场说明：</p>
+<ul class="bullet-list"><li>参考初稿里“城市生命线”这一思路，但不直接使用原表达。</li><li>从街区到地下，要像情绪下潜，而不是简单介绍最后一个产品。</li></ul>
+<h3 id="序列-f-统一调度与收束">序列 F：统一调度与收束</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>用途</th><th>时长</th><th>画面内容</th><th>景别/机位/运镜</th><th>场景/道具</th><th>字幕/旁白</th><th>转场</th></tr></thead><tbody><tr><td>25</td><td>五类设备统一上图</td><td>10s</td><td>五类设备任务图层同时接入中控大屏，形成完整治理图景</td><td>大屏全景 + UI 动效</td><td>中控中心、大屏</td><td>旁白：当五类装备同时在线，城市运行便拥有了更清晰的坐标与节奏。</td><td>汇聚叠化</td></tr><tr><td>26</td><td>闭环能力展示</td><td>10s</td><td>感知、研判、派单、处置、反馈流程形成闭环</td><td>界面镜头为主</td><td>数据可视化图层</td><td>字幕：感知-决策-处置-反馈 闭环运行</td><td>图形动画切换</td></tr><tr><td>27</td><td>城市与平台交叠</td><td>10s</td><td>中控中心与城市实景交叠，多个空间同步运转</td><td>中景至大全景，慢拉</td><td>中控大屏、城市远景</td><td>旁白：让分散的任务被统一调度，让连续的场景形成闭环联动。</td><td>叠化</td></tr><tr><td>28</td><td>治理价值总结</td><td>10s</td><td>指挥中心稳定运行，城市秩序井然</td><td>大全景，稳重收束</td><td>展厅、会议环境、城市实景</td><td>旁白：让城市治理，从被动响应，走向主动感知。</td><td>渐隐</td></tr><tr><td>29</td><td>品牌收口</td><td>8s</td><td>品牌标题定版，背景为克制科技城市纹理</td><td>定帧或微动效</td><td>品牌主视觉</td><td>字幕：东风环境 城市管家一体化方案</td><td>淡出</td></tr></tbody></table></div></div>
+<h3 id="时长合计">时长合计</h3>
+<ul class="bullet-list"><li>约 198 秒素材时长</li><li>成片剪辑后可压缩至 175-185 秒</li><li>适合标准 3 分钟版本</li></ul>
+</section>
+<section class="content-section" id="六-拍摄与生成方式建议">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>六、拍摄与生成方式建议</h2></div>
+<h3 id="1-live-action-ai-generated-hybrid-分配">1. Live Action / AI Generated / Hybrid 分配</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>序列</th><th>建议方式</th><th>原因</th></tr></thead><tbody><tr><td>城市开篇</td><td>Live Action</td><td>真实城市质感最能建立政府信任</td></tr><tr><td>地面清扫</td><td>Live Action + Hybrid</td><td>产品与作业必须真实，路径信息适合 HUD</td></tr><tr><td>水面保洁</td><td>Live Action + Hybrid</td><td>水面作业真实可信，转场可轻度增强</td></tr><tr><td>空中巡查</td><td>Live Action + Hybrid</td><td>起降和飞行实拍，联动信息图形化</td></tr><tr><td>安防巡逻</td><td>Live Action + Hybrid</td><td>人机共处场景必须真实，告警层可包装</td></tr><tr><td>地下检测</td><td>Live Action + Hybrid</td><td>真实工况为核心，缺陷识别需 UI 辅助</td></tr><tr><td>平台收束</td><td>Hybrid + AI Generated</td><td>大屏实景为基底，闭环和片尾可图形化强化</td></tr></tbody></table></div></div>
+<h3 id="1-1-建议优先使用-aigc-的转场镜头">1.1 建议优先使用 AIGC 的转场镜头</h3>
+<p>以下镜头建议优先采用 <code>AI Generated</code> 或 <code>Hybrid</code>，因为它们本质上承担的是“空间递进、视野转换、系统联动”的表达任务，用纯实拍容易显得生硬，用 AIGC 更容易形成自然流动的氛围感。</p>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>建议方式</th><th>原因</th><th>执行建议</th></tr></thead><tbody><tr><td>9</td><td>Hybrid</td><td>从地面到水面的空间延展更适合通过流动式转场完成。</td><td>前段保留真实路面与水流，后段用 AIGC 平滑接入开阔水域。</td></tr><tr><td>13</td><td>AI Generated</td><td>从水域任务抬升到高空视野，属于抽象的感知拓展镜头。</td><td>用真实城市为底，叠加克制的数据抬升效果。</td></tr><tr><td>17</td><td>Hybrid</td><td>从高空回到街区，如果硬切会像换产品，不像治理递进。</td><td>用航拍落点配合 AIGC 做视角下沉，再接实拍机器人。</td></tr><tr><td>21</td><td>AI Generated</td><td>从地表下潜到地下管网，实拍连贯实现难度高。</td><td>保持写实工程感，避免过度科幻化。</td></tr><tr><td>25</td><td>Hybrid</td><td>五类设备统一上图，需要真实大屏与系统图层叠加。</td><td>中控实拍为基底，设备路径与任务图层后期生成。</td></tr><tr><td>26</td><td>AI Generated</td><td>闭环治理能力更适合通过动态图形或 AIGC 视觉完成。</td><td>信息图保持政务科技风，避免互联网发布会风格。</td></tr><tr><td>27</td><td>Hybrid</td><td>城市与平台交叠属于方案升维镜头，适合用视觉融合增强气势。</td><td>实拍城市与中控中心交叠，控制节奏与留白。</td></tr><tr><td>29</td><td>AI Generated</td><td>片尾品牌收口天然适合图形化。</td><td>与全片蓝白灰视觉系统统一。</td></tr></tbody></table></div></div>
+<h3 id="1-2-不建议交给-aigc-主做的镜头">1.2 不建议交给 AIGC 主做的镜头</h3>
+<p>以下镜头建议坚持以 <code>Live Action</code> 为主，因为它们直接关系到产品真实性、治理可信度和政府观看时的落地感。</p>
+<ul class="bullet-list"><li>五类产品的出场镜头</li><li>产品真实作业特写</li><li>中控中心实景与大屏环境</li><li>人机共处、设备融入城市日常的生活化镜头</li></ul>
+<p>原因很明确：</p>
+<ul class="bullet-list"><li>政府客户对“真实可落地”比“视觉新鲜感”更敏感。</li><li>产品尺度、动作逻辑、作业状态一旦 AI 感过重，可信度会明显下降。</li><li>真正打动人的，不只是科技感，而是“这些设备已经能在真实城市里运行”的确定感。</li></ul>
+<h3 id="2-节奏提醒">2. 节奏提醒</h3>
+<ul class="bullet-list"><li>开篇要慢半拍，让观众先进入城市气氛。</li><li>产品段不宜像“展台讲解”，每一段都要先有场景，再有产品。</li><li>转场要服务“空间递进”，不能只是“下一个设备”。</li><li>后半段平台收束要明显拉升格局，形成方案级结尾。</li></ul>
+<h3 id="3-推荐执行比例">3. 推荐执行比例</h3>
+<p>为了兼顾真实感与氛围感，建议整片采用以下结构：</p>
+<ul class="bullet-list"><li>实拍：70%-80%</li><li>AIGC / 动态图形：20%-30%</li></ul>
+<p>推荐原则：</p>
+<ul class="bullet-list"><li>产品主体和真实场景，用实拍建立信任。</li><li>视角切换、空间过渡、系统汇聚，用 AIGC 提升顺滑度和氛围感。</li><li>不让 AIGC 抢走“真实落地”的主导权，只让它负责“把逻辑讲顺、把空间接顺、把科技感提顺”。</li></ul>
+<h3 id="4-逐镜头执行方式总表">4. 逐镜头执行方式总表</h3>
+<div class="table-card"><div class="table-scroll"><table><thead><tr><th>镜头编号</th><th>执行方式</th><th>主要目的</th><th>原因</th><th>执行备注</th></tr></thead><tbody><tr><td>1</td><td>Live Action</td><td>建立城市气质</td><td>真实城市晨光最能建立可信氛围。</td><td>优先航拍真实城市。</td></tr><tr><td>2</td><td>Live Action</td><td>铺垫城市呼吸感</td><td>生活细节越真实，越容易带入政府观看语境。</td><td>选择干净、有秩序的城市界面。</td></tr><tr><td>3</td><td>Live Action</td><td>提出治理需求</td><td>落叶、漂浮物、井盖等都应保留真实质感。</td><td>以实拍蒙太奇完成。</td></tr><tr><td>4</td><td>Live Action</td><td>引出调度中枢</td><td>中控中心必须是真实能力锚点。</td><td>可后期替换或增强大屏内容。</td></tr><tr><td>5</td><td>Live Action</td><td>引出地面保洁场景</td><td>地面问题要可感知、可信。</td><td>适当布置落叶和纸屑。</td></tr><tr><td>6</td><td>Live Action</td><td>清扫车出场</td><td>产品尺度、外观、环境关系必须真实。</td><td>保留产品原始形态。</td></tr><tr><td>7</td><td>Live Action</td><td>展示清扫特征</td><td>作业结构和动作真实最重要。</td><td>重点拍边刷、主刷、回收。</td></tr><tr><td>8</td><td>Hybrid</td><td>接入系统调度</td><td>真实车体叠加路径和状态更清楚。</td><td>实拍为底，HUD 轻包装。</td></tr><tr><td>9</td><td>Hybrid</td><td>地面过渡到水面</td><td>空间延展与水流递进适合 AIGC 衔接。</td><td>前半实拍，后半 AIGC 过渡。</td></tr><tr><td>10</td><td>Live Action</td><td>无人船出场</td><td>水面设备需真实建立信任。</td><td>选平稳水域拍摄。</td></tr><tr><td>11</td><td>Live Action</td><td>展示水面作业特征</td><td>回收、贴岸、航行需真实可见。</td><td>多角度补拍作业细节。</td></tr><tr><td>12</td><td>Hybrid</td><td>自动补能与回传</td><td>靠泊可实拍，状态信息适合增强。</td><td>HUD 保持克制。</td></tr><tr><td>13</td><td>AI Generated</td><td>水域过渡到高空</td><td>视野抬升与任务扩展更适合 AIGC。</td><td>用真实城市纹理做底。</td></tr><tr><td>14</td><td>Live Action</td><td>无人机系统出场</td><td>起飞与机场部署需要真实说服力。</td><td>提前确认飞行审批。</td></tr><tr><td>15</td><td>Hybrid</td><td>展示空中能力</td><td>飞行画面实拍，能力信息需画面辅助。</td><td>叠加可见光/热成像/UI。</td></tr><tr><td>16</td><td>Hybrid</td><td>平台联动</td><td>大屏真实，联动逻辑适合图层增强。</td><td>实拍中控后期做弹窗。</td></tr><tr><td>17</td><td>Hybrid</td><td>高空过渡到街区</td><td>视角下沉比硬切更自然。</td><td>航拍落点接 AIGC 过渡。</td></tr><tr><td>18</td><td>Live Action</td><td>巡逻机器人出场</td><td>人机空间关系必须真实。</td><td>保留真实夜景环境。</td></tr><tr><td>19</td><td>Hybrid</td><td>展示安防能力</td><td>变焦、喊话、夜视要可视化。</td><td>实拍主体，后期加告警层。</td></tr><tr><td>20</td><td>Live Action</td><td>生活化人机共处</td><td>这类镜头最依赖真实感。</td><td>安排自然人流与礼让动作。</td></tr><tr><td>21</td><td>AI Generated</td><td>地表过渡到地下</td><td>下潜式进入地下空间实拍难度高。</td><td>保持工程写实，不做科幻。</td></tr><tr><td>22</td><td>Live Action</td><td>管道机器人出场</td><td>工况和设备尺度必须真实。</td><td>优先真实训练环境。</td></tr><tr><td>23</td><td>Hybrid</td><td>展示检测能力</td><td>缺陷识别和数据记录需 UI 支撑。</td><td>实拍+界面标注。</td></tr><tr><td>24</td><td>Hybrid</td><td>上传平台</td><td>终端实拍，数据流适合包装。</td><td>生成报告与归档动画。</td></tr><tr><td>25</td><td>Hybrid</td><td>五类设备统一上图</td><td>真实中控结合任务图层最稳妥。</td><td>实景为底，图层后期合成。</td></tr><tr><td>26</td><td>AI Generated</td><td>展示闭环能力</td><td>流程闭环适合动态图形化表达。</td><td>坚持政务科技风。</td></tr><tr><td>27</td><td>Hybrid</td><td>城市与平台交叠</td><td>升维镜头适合实景融合增强。</td><td>中控与城市双层叠化。</td></tr><tr><td>28</td><td>Live Action</td><td>价值总结</td><td>最终收束要回到真实城市与真实中控。</td><td>节奏稳，镜头停得住。</td></tr><tr><td>29</td><td>AI Generated</td><td>品牌片尾收口</td><td>片尾图形化最利于统一视觉系统。</td><td>与全片蓝白灰系统统一。</td></tr></tbody></table></div></div>
+<h3 id="5-交付分工建议">5. 交付分工建议</h3>
+<p>如果后续要分别给导演组、后期组、AIGC 组执行，建议这样拆分：</p>
+<ul class="bullet-list"><li>导演/摄影组负责：1-7、10-11、14、18、20、22、28</li><li>后期包装组负责：8、12、15、16、19、23、24、25、27、29</li><li>AIGC 组重点负责：9、13、17、21、26</li></ul>
+<p>这样拆分的好处是：</p>
+<ul class="bullet-list"><li>产品真实镜头集中交给实拍团队，保证落地感。</li><li>转场和系统镜头交给包装与 AIGC 团队，保证流动感。</li><li>不会把“真实产品镜头”误交给 AIGC，避免后面风格跑偏。</li></ul>
+</section>
+<section class="content-section" id="七-产品统一口径">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>七、产品统一口径</h2></div>
+<ul class="bullet-list"><li>无人清扫车：东风环境无人驾驶清扫车</li><li>无人船：东风环境水面无人清洁船</li><li>无人机系统：东风环境空地一体智能巡查系统</li><li>安防巡逻机器人：东风环境智能安防巡逻机器人</li><li>管道机器人：东风环境管道检测机器人</li><li>中控大屏：东风环境城市管家智慧调度中心</li></ul>
+<p>统一原则：</p>
+<ul class="bullet-list"><li>不改产品基础机械结构与功能表述</li><li>不回避原产品专业能力</li><li>通过品牌贴装、字幕命名、平台接入和任务联动完成“东风环境化”</li></ul>
+</section>
+<section class="content-section" id="八-建议片名">
+<div class="section-head"><span class="section-kicker">SECTION</span><h2>八、建议片名</h2></div>
+<ul class="bullet-list"><li>主标题：东风环境 城市管家一体化方案</li><li>副标题：全域感知 统一调度 智慧治理</li></ul>
+</section>
+    </main>
+    <aside class="sidebar">
+      <h2>目录</h2>
+      <nav class="toc">
+        <a class="toc-main" href="#一-创作前提">一、创作前提</a><a class="toc-sub" href="#1-本次改写原则">1. 本次改写原则</a><a class="toc-sub" href="#2-项目定位">2. 项目定位</a><a class="toc-sub" href="#3-成片目标">3. 成片目标</a><a class="toc-main" href="#二-创意主轴">二、创意主轴</a><a class="toc-sub" href="#1-核心表达">1. 核心表达</a><a class="toc-sub" href="#2-情绪结构">2. 情绪结构</a><a class="toc-sub" href="#3-氛围关键词">3. 氛围关键词</a><a class="toc-main" href="#三-3-分钟版总旁白">三、3 分钟版总旁白</a><a class="toc-main" href="#四-产品段落文案">四、产品段落文案</a><a class="toc-sub" href="#1-无人驾驶清扫车">1. 无人驾驶清扫车</a><a class="toc-sub" href="#2-水面无人清洁船">2. 水面无人清洁船</a><a class="toc-sub" href="#3-空地一体智能巡查系统">3. 空地一体智能巡查系统</a><a class="toc-sub" href="#4-智能安防巡逻机器人">4. 智能安防巡逻机器人</a><a class="toc-sub" href="#5-管道检测机器人">5. 管道检测机器人</a><a class="toc-sub" href="#6-智慧调度中心">6. 智慧调度中心</a><a class="toc-main" href="#五-分镜脚本">五、分镜脚本</a><a class="toc-sub" href="#序列-a-城市苏醒">序列 A：城市苏醒</a><a class="toc-sub" href="#序列-b-从道路到水域">序列 B：从道路到水域</a><a class="toc-sub" href="#序列-c-从水域到高空">序列 C：从水域到高空</a><a class="toc-sub" href="#序列-d-从高空回到街区">序列 D：从高空回到街区</a><a class="toc-sub" href="#序列-e-从地表到地下">序列 E：从地表到地下</a><a class="toc-sub" href="#序列-f-统一调度与收束">序列 F：统一调度与收束</a><a class="toc-sub" href="#时长合计">时长合计</a><a class="toc-main" href="#六-拍摄与生成方式建议">六、拍摄与生成方式建议</a><a class="toc-sub" href="#1-live-action-ai-generated-hybrid-分配">1. Live Action / AI Generated / Hybrid 分配</a><a class="toc-sub" href="#1-1-建议优先使用-aigc-的转场镜头">1.1 建议优先使用 AIGC 的转场镜头</a><a class="toc-sub" href="#1-2-不建议交给-aigc-主做的镜头">1.2 不建议交给 AIGC 主做的镜头</a><a class="toc-sub" href="#2-节奏提醒">2. 节奏提醒</a><a class="toc-sub" href="#3-推荐执行比例">3. 推荐执行比例</a><a class="toc-sub" href="#4-逐镜头执行方式总表">4. 逐镜头执行方式总表</a><a class="toc-sub" href="#5-交付分工建议">5. 交付分工建议</a><a class="toc-main" href="#七-产品统一口径">七、产品统一口径</a><a class="toc-main" href="#八-建议片名">八、建议片名</a>
+      </nav>
+      <div class="sidebar-note">
+        建议用浏览器打开阅读。<br>
+        如果要发给别人，可直接浏览器打印为 PDF，版式会比 Word 更稳定。
+      </div>
+    </aside>
+  </div>
+  <script>
+    (() => {
+      const sidebar = document.querySelector('.sidebar');
+      if (!sidebar) return;
+
+      let lastY = window.scrollY;
+
+      const updateSidebar = () => {
+        if (window.innerWidth <= 1080) {
+          sidebar.style.top = '';
+          return;
+        }
+
+        const rect = sidebar.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const margin = 24;
+        const overflow = rect.height - (viewportHeight - margin * 2);
+
+        if (overflow <= 0) {
+          sidebar.style.top = margin + 'px';
+          return;
+        }
+
+        const scrollingDown = window.scrollY > lastY;
+        lastY = window.scrollY;
+
+        const currentTop = parseFloat(sidebar.style.top || margin);
+        const minTop = viewportHeight - rect.height - margin;
+        const maxTop = margin;
+
+        let nextTop = currentTop;
+
+        if (scrollingDown && rect.bottom > viewportHeight - margin) {
+          nextTop = Math.max(minTop, currentTop - (rect.bottom - (viewportHeight - margin)));
+        } else if (!scrollingDown && rect.top < margin) {
+          nextTop = Math.min(maxTop, currentTop + (margin - rect.top));
+        }
+
+        sidebar.style.top = nextTop + 'px';
+      };
+
+      updateSidebar();
+      window.addEventListener('scroll', updateSidebar, { passive: true });
+      window.addEventListener('resize', updateSidebar);
+    })();
+  </script>
+</body>
+</html>
