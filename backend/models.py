@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -33,9 +34,67 @@ class StepResult(BaseModel):
 
 
 class ChatMessage(BaseModel):
+    id: str = Field(default_factory=lambda: uuid4().hex)
     role: str
     content: str
+    message_type: str = "chat"
     streaming: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+
+
+class ExecutionAssumption(BaseModel):
+    source: str = "system"
+    title: str = ""
+    detail: str = ""
+
+
+class WorkflowStep(BaseModel):
+    key: str
+    label: str
+    status: str = "upcoming"
+
+
+class MissingCard(BaseModel):
+    title: str = ""
+    body: str = ""
+    tone: str = "info"
+
+
+class AssetOverview(BaseModel):
+    total: int = 0
+    ready: int = 0
+    processing: int = 0
+    failed: int = 0
+    highlighted: list[str] = Field(default_factory=list)
+
+
+class ActiveOutput(BaseModel):
+    version: str = ""
+    label: str = ""
+    focus_title: str = ""
+    focus_summary: str = ""
+    status: str = "idle"
+
+
+class InsightProjectSummary(BaseModel):
+    positioning: str = ""
+    audience: str = ""
+    style: str = ""
+    duration: str = ""
+    version_target: str = ""
+
+
+class InsightPanel(BaseModel):
+    stage: str = ""
+    stage_label: str = ""
+    stage_summary: str = ""
+    badge: str = ""
+    project_summary: InsightProjectSummary = Field(default_factory=InsightProjectSummary)
+    assumptions: list[str] = Field(default_factory=list)
+    asset_summary: list[str] = Field(default_factory=list)
+    current_output: ActiveOutput = Field(default_factory=ActiveOutput)
+    shot_highlights: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
 
 
 class ProjectAsset(BaseModel):
@@ -60,7 +119,15 @@ class ProjectState(BaseModel):
     content_units: list[ContentUnit] = Field(default_factory=list)
     steps: dict[str, StepResult] = Field(default_factory=dict)
     messages: list[ChatMessage] = Field(default_factory=list)
-    stage: str = "0"
+    execution_assumptions: list[ExecutionAssumption] = Field(default_factory=list)
+    stage: str = "chat"
+    workflow_stage: str = "requirements"
+    workflow_steps: list[WorkflowStep] = Field(default_factory=list)
+    stage_summary: str = ""
+    missing_card: MissingCard | None = None
+    asset_overview: AssetOverview = Field(default_factory=AssetOverview)
+    active_output: ActiveOutput = Field(default_factory=ActiveOutput)
+    insight_panel: InsightPanel = Field(default_factory=InsightPanel)
     selection_state: dict[str, Any] = Field(default_factory=dict)
     last_export: dict[str, str] = Field(default_factory=dict)
     active_version: str = "full"
@@ -96,6 +163,11 @@ class GenerateFullRequest(BaseModel):
 class GenerateVersionedRequest(BaseModel):
     project: ProjectState
     version: str = "full"
+
+
+class ChatRequest(BaseModel):
+    project: ProjectState
+    message: str
 
 
 class PreviewResponse(BaseModel):

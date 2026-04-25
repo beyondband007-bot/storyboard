@@ -99,22 +99,46 @@ Based on content units and project positioning, recommend connection logic types
 
 Auto-recommend best fit + present other options for user selection/adjustment.
 
-### Phase 3: Generate Output
+### Phase 3: Generate Proposal Version
 
 **3.1 Output Mode Selection**
 
 Ask user:
 ```
 输出方式：
-A. 一次性输出完整内容
-B. 分步确认（每步可调整后继续）
+A. 先出提案版 → 确认后出完整版（推荐）
+B. 直接出完整版
 ```
 
-**3.2 Generate Complete Version**
+**3.2 Generate Proposal Version (If user selects "A")**
 
-If user selects "A", output all sections at once.
+Proposal version is designed to **persuade stakeholders**, not just simplify content.
 
-If user selects "B", follow step-by-step confirmation:
+**Key principles:**
+- **不缩减核心内容**：完整保留总旁白、段落文案、分镜脚本表
+- **新增说服力内容**：创意策略、核心表达、成片价值、视觉风格设定、音乐音效设计
+- **省略执行细节**：拍摄方式建议、交付分工建议
+
+**Proposal structure:**
+
+| 模块 | 说明 |
+|---|---|
+| 封面信息 | 项目名称、提报单位、日期 |
+| 目录 | 章节导航 |
+| 创作前提 | 项目定位 + 成片目标 + 成片价值 |
+| **创意策略** | 创意理念 + 策略依据 + 差异化亮点 + 创意洞察 + 传播策略 |
+| 创意主轴 | 核心表达 + 情绪曲线 + 观众感受预期 |
+| **视觉风格设定**（新增） | 画面风格 + 色彩体系 + 镜头语言 + 视觉符号 + 参考对标 |
+| 总旁白 | 完整不缩减 |
+| 段落文案 | 完整不缩减 |
+| 分镜脚本表 | 完整不缩减 |
+| **音乐音效设计**（新增） | 音乐风格规划 + 关键音效 + 情绪节奏曲线 |
+| 统一表达归纳 | 强化呈现 |
+| **省略** | 拍摄方式建议、交付分工建议 |
+
+**3.3 Generate Complete Version (If user selects "B")**
+
+Output all sections including execution details:
 
 | Step | Output Content |
 |---|---|
@@ -123,18 +147,24 @@ If user selects "B", follow step-by-step confirmation:
 | 3 | 分镜脚本表 |
 | 4 | 拍摄方式建议 + 交付分工建议 + 统一表达归纳 |
 
-Each step: Generate → User confirms/adjusts → Continue
+### Phase 4: Confirm and Generate Full Version
 
-**3.3 Version Selection**
+**4.1 Proposal Confirmation**
 
-After complete version is generated:
+After proposal version is generated:
 ```
-是否需要生成其他版本？
-- 提案版：精简版，突出亮点，省略技术细节，规避"AI生成"表述
-- 其他版本：请说明需求
+提案版已输出，请确认创意方向是否满意：
+- 满意 → 自动生成完整版（补充执行细节）
+- 需调整 → 请说明需要调整的内容
 ```
 
-**3.4 Generate Document Files**
+**4.2 Auto-generate Complete Version**
+
+When proposal is confirmed, automatically generate complete version by adding:
+- 拍摄方式建议 (Production Method Recommendations)
+- 交付分工建议 (Delivery Assignment)
+
+### Phase 5: Generate Document Files
 
 After all content is finalized, generate output files:
 
@@ -146,8 +176,8 @@ python "${SKILL_DIR}/scripts/generate_docx.py" "{input_md}" "{output_docx}" --ti
 ```
 
 Output files:
-- `{项目名称}_{版本}.md` - Markdown source
-- `{项目名称}_{版本}.docx` - Formatted Word document
+- `{项目名称}_提案版.md/.docx` - Proposal version
+- `{项目名称}_完整版.md/.docx` - Complete version
 
 **Default Path**: `Documents\claude\分镜脚本\`
 **User-specified**: Follow user's path
@@ -233,11 +263,196 @@ Rules adjusted by project type:
 
 ## Version Differences
 
-| Version | Characteristics |
-|---|---|
-| **完整版（默认）** | Detailed, all sections included, full technical implementation |
-| **提案版** | Concise, highlights focused, no technical details, avoid "AI生成" terminology |
-| **其他版本** | Customized based on requirements |
+| Version | Purpose | Reader | Content |
+|---|---|---|---|
+| **提案版** | 说服决策、确认方向 | 需求方（决策者/项目负责人） | 创意策略 + 完整文案分镜 + 省略执行细节 |
+| **完整版** | 执行指导 | 制作团队 | 全部内容，含拍摄方式、交付分工 |
+
+**提案版 ≠ 精简版**
+
+提案版的本质是**说服**，不是"少"。核心原则：
+- 不缩减打动人的核心内容（文案、分镜）
+- 增加说服力内容（创意策略、核心表达、成片价值）
+- 省略执行细节（拍摄方式、交付分工）
+
+## 提案版新增内容模板
+
+### 创意策略 (Creative Strategy)
+
+**自动推导依据：**
+- 项目定位（客户类型、影片类型）
+- 内容单元特征
+- 参考样片风格
+- 用户偏好
+
+**输出结构：**
+```
+### 创意策略
+
+**创意理念**
+[一句话概括为什么选择这个创意方向]
+
+**策略依据**
+- 基于[项目定位/内容特征/受众洞察]
+- 参考[样片风格/行业案例]
+- 符合[传播目标/品牌调性]
+
+**差异化亮点**
+[与常规方案的差异点，让需求方看到独特价值]
+
+### 创意洞察
+
+**目标受众画像**
+- [受众群体描述]
+- 年龄：[年龄段]
+- 痛点：[核心痛点]
+- 情感需求：[深层需求]
+
+**核心发现**
+> [从调研中提炼的关键洞察]
+
+### 传播策略
+
+**内容策略**
+- [内容方向]
+
+**情绪策略**
+- [情绪节奏设计]
+
+**叙事策略**
+- [叙事方式选择]
+```
+
+### 核心表达 (Core Expression)
+
+**在创意主轴中强化呈现：**
+```
+### 创意主轴
+
+**核心表达**
+[一句话概括创意核心，便于决策者快速理解]
+
+**情绪曲线**
+[描述情绪起伏，如：开场吸引 → 中段深入 → 高潮震撼 → 结尾升华]
+
+**观众感受预期**
+[看完片子后观众会有什么感受/印象]
+```
+
+### 成片价值 (Value Proposition)
+
+**在创作前提中补充：**
+```
+### 创作前提
+
+**项目定位**
+[客户类型 + 影片类型]
+
+**成片目标**
+[传播目标 + 预期效果]
+
+**成片价值**
+- 传达什么：[核心信息]
+- 触达什么：[情感层面]
+- 达到什么：[传播层面]
+```
+
+### 视觉风格设定 (Visual Style)
+
+**让客户"看见"最终效果，降低想象门槛：**
+```
+### 视觉风格设定
+
+**整体调性关键词**
+- [关键词1] × [关键词2]
+- [关键词3] × [关键词4]
+
+**色彩体系**
+
+| 色彩角色 | 色值 | 应用场景 |
+|---------|------|---------|
+| 主色 | #[色值] | [应用场景] |
+| 辅助色 | #[色值] | [应用场景] |
+| 点缀色 | #[色值] | [应用场景] |
+
+**光影质感**
+- [各阶段的光影设计]
+
+**镜头语言**
+- 运镜风格：[各阶段的运镜特点]
+- 构图特点：[构图方式]
+- 剪辑节奏：[节奏变化]
+
+**视觉符号**
+- 核心视觉元素：[元素描述]
+- 符号演变逻辑：[变化过程]
+
+**参考风格对标**
+| 风格来源 | 借鉴要点 |
+|---------|---------|
+| [参考对象] | [借鉴内容] |
+```
+
+### 音乐音效设计 (Music & Sound)
+
+**完善听觉体验规划：**
+```
+### 音乐风格规划
+
+| 阶段 | 音乐风格 | 情绪表达 | 节奏特征 |
+|-----|---------|---------|---------|
+| [篇章名] | [风格] | [情绪] | [节奏] |
+
+### 关键音效设计
+
+| 时间点 | 音效类型 | 功能说明 |
+|-------|---------|---------|
+| [时间] | [音效] | [功能] |
+
+### 情绪节奏曲线
+
+[用图示表达音量、情绪、节奏的变化]
+```
+
+## 提案撰写黄金法则
+
+### 黄金比例
+
+```
+封面+目录     5-10%
+背景理解     15-20%
+创意策略     15-20%
+视觉风格     10-15%
+分镜脚本     40-50%
+音乐音效     5-10%
+```
+
+### 逻辑链条
+
+```
+背景分析 → 洞察提炼 → 创意生成 → 视觉转化 → 内容落地
+```
+
+每一环节都要有逻辑承接，形成闭环。
+
+### 信息层级
+
+```
+一级信息：核心创意概念（1个）
+二级信息：支撑要点（3-5个）
+三级信息：细节内容（展开说明）
+```
+
+### 情感曲线
+
+提案阅读过程要有情绪起伏：
+```
+开篇：好奇/期待
+背景：认同/信任
+创意：惊喜/赞叹
+分镜：沉浸/感动
+结尾：信任/行动意愿
+```
 
 ## Output Format
 

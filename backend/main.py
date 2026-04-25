@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .models import (
     AssetUploadResponse,
+    ChatRequest,
     ConfigResponse,
     ExportRequest,
     GenerateFullRequest,
@@ -22,6 +23,7 @@ from .models import (
     SaveProjectRequest,
 )
 from .assets import asset_download_path, delete_asset, upload_asset
+from .chat_flow import refresh_project_context, stream_chat
 from .storage import OUTPUTS_DIR, delete_project, load_project, project_dir, safe_filename, save_project, list_projects
 from .storyboard import (
     generate_creative_preview,
@@ -73,13 +75,15 @@ def upsert_project(payload: SaveProjectRequest) -> ProjectState:
     project = payload.project
     if not project.id:
         project.id = uuid4().hex
+    project = refresh_project_context(project, "none")
     return save_project(project)
 
 
 @app.get("/api/projects/{project_id}", response_model=ProjectState)
 def get_project(project_id: str) -> ProjectState:
     try:
-        return load_project(project_id)
+        project = load_project(project_id)
+        return refresh_project_context(project, "none")
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -107,6 +111,8 @@ async def upload_project_asset(
         project = ProjectState(id=project_id)
         save_project(project)
     project, asset = await upload_asset(project, file, asset_type)
+    project = refresh_project_context(project, "none")
+    save_project(project)
     return AssetUploadResponse(project=project, asset=asset)
 
 
@@ -123,7 +129,9 @@ def list_project_assets(project_id: str):
 def delete_project_asset(project_id: str, asset_id: str) -> ProjectState:
     try:
         project = load_project(project_id)
-        return delete_asset(project, asset_id)
+        project = delete_asset(project, asset_id)
+        project = refresh_project_context(project, "none")
+        return save_project(project)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -144,6 +152,11 @@ def download_project_asset(project_id: str, asset_id: str):
 def generate_storyboard_step(payload: GenerateStepRequest) -> GenerateStepResponse:
     project, step = generate_step(payload.project, payload.step_key)
     return GenerateStepResponse(project=project, step=step)
+
+
+@app.post("/api/chat/stream")
+def chat_stream(payload: ChatRequest):
+    return stream_chat(payload.project, payload.message)
 
 
 @app.post("/api/generate/full/stream")
