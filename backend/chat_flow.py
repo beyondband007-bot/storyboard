@@ -77,6 +77,20 @@ def append_message(project: ProjectState, role: str, content: str, message_type:
     return message
 
 
+def is_project_relevant_message(message: ChatMessage) -> bool:
+    return message.message_type != "unrelated"
+
+
+def normalize_intent(value: str | None) -> str:
+    intent = (value or "").strip().lower()
+    allowed = {"project_update", "generation_request", "revision", "unrelated"}
+    return intent if intent in allowed else "project_update"
+
+
+def is_unrelated_intent(payload: dict[str, Any]) -> bool:
+    return normalize_intent(str(payload.get("intent") or "")) == "unrelated"
+
+
 def extract_json_payload(text: str) -> dict[str, Any]:
     content = (text or "").strip()
     if not content:
@@ -134,9 +148,10 @@ def summarize_assumptions(project: ProjectState) -> str:
 
 
 def summarize_recent_messages(project: ProjectState, limit: int = 8) -> str:
-    if not project.messages:
+    messages = [message for message in project.messages if is_project_relevant_message(message)]
+    if not messages:
         return "暂无历史对话。"
-    recent = project.messages[-limit:]
+    recent = messages[-limit:]
     return "\n".join(f"- {message.role}: {compact_text(message.content, 220)}" for message in recent)
 
 
@@ -172,10 +187,13 @@ def analyze_user_message(project: ProjectState, message: str) -> dict[str, Any]:
 1. 自动补齐项目定位、内容单元、风格和修改意见。
 2. 当关键信息仍然缺失时，用 should_prompt_missing=true 标记需要补充，具体追问轮次由系统控制。
 3. 如果用户已经表达了“生成提案版/完整版/继续生成”的意图，即使资料不完整也要继续。
-4. reply 要简洁，像导演助理在推进流程，不要长篇解释。
+4. 先判断 intent：和分镜项目资料、修改意见、素材、导出、生成相关才归为 project_update、revision 或 generation_request；闲聊、情感请求、百科问答、竞品比较、编程咨询等与当前分镜项目无关的问题必须归为 unrelated。
+5. intent=unrelated 时，不要填写 project_updates、content_units、revision_note、execution_assumptions，generation_mode 必须是 none，reply 简短说明只处理当前分镜项目相关问题。
+6. reply 要简洁，像导演助理在推进流程，不要长篇解释。
 
 硬规则：
 - 只输出 JSON。
+- intent 只能是 "project_update"、"revision"、"generation_request"、"unrelated"。
 - generation_mode 只能是 "none"、"proposal"、"full"。
 - should_prompt_missing 只在你判断当前信息仍缺少关键项时设为 true。
 - missing_hint 只写一句自然中文。
@@ -190,6 +208,7 @@ def analyze_user_message(project: ProjectState, message: str) -> dict[str, Any]:
 
 请输出：
 {{
+  "intent": "project_update",
   "project_updates": {{
     "project_name": "",
     "client_type": "",
@@ -238,7 +257,19 @@ def analyze_user_message(project: ProjectState, message: str) -> dict[str, Any]:
     except Exception:
         payload = {}
 
-    payload["generation_mode"] = normalize_generation_mode(payload.get("generation_mode"), project, message)
+    payload["intent"] = normalize_intent(str(payload.get("intent") or ""))
+    if is_unrelated_intent(payload):
+        payload["generation_mode"] = "none"
+        payload["project_updates"] = {}
+        payload["content_units"] = []
+        payload["revision_note"] = ""
+        payload["execution_assumptions"] = []
+        payload["should_prompt_missing"] = False
+        payload["missing_hint"] = ""
+        if not str(payload.get("reply") or "").strip():
+            payload["reply"] = "我专注于当前分镜脚本项目的编排、生成和修改；这个问题与项目无关，我先不展开回答。"
+    else:
+        payload["generation_mode"] = normalize_generation_mode(payload.get("generation_mode"), project, message)
     return payload
 
 
@@ -408,7 +439,7 @@ def extract_audience_from_text(text: str) -> str:
 def detect_audience(project: ProjectState) -> str:
     candidates = [
         project.steps.get("revision").content if project.steps.get("revision") else "",
-        *(message.content for message in project.messages[-8:]),
+        *(message.content for message in project.messages[-8:] if is_project_relevant_message(message)),
         *(assumption.detail for assumption in project.execution_assumptions if "受众" in assumption.title or "受众" in assumption.detail),
     ]
     for text in candidates:
@@ -808,6 +839,10 @@ def build_stage_prefix(project: ProjectState, generation_mode: str) -> str:
 
 
 def compose_reply(project: ProjectState, payload: dict[str, Any], generation_mode: str, missing_text: str = "") -> str:
+    if is_unrelated_intent(payload):
+        reply = str(payload.get("reply") or "").strip()
+        return reply or "我专注于当前分镜脚本项目的编排、生成和修改；这个问题与项目无关，我先不展开回答。"
+
     parts: list[str] = [build_stage_prefix(project, generation_mode)]
     if missing_text:
         parts.append(missing_text)
@@ -816,7 +851,7 @@ def compose_reply(project: ProjectState, payload: dict[str, Any], generation_mod
     if reply:
         parts.append(reply)
 
-    if project.workflow_stage in {"proposal", "full", "export"} and generation_mode == "none":
+    if project.workflow_stage in {"proposal", "full", "export"} and generation_mode == "none" and not is_unrelated_intent(payload):
         parts.append("这条补充我已经记录，会影响后续生成或下一轮重生成。")
 
     return "\n\n".join(part for part in parts if part).strip()
@@ -869,7 +904,7 @@ def detect_audience(project: ProjectState) -> str:
 def infer_duration_from_context(project: ProjectState) -> str:
     candidates = [
         project.steps.get("revision").content if project.steps.get("revision") else "",
-        *(message.content for message in project.messages[-8:]),
+        *(message.content for message in project.messages[-8:] if is_project_relevant_message(message)),
         *(assumption.detail for assumption in project.execution_assumptions if "片长" in assumption.title or "时长" in assumption.title),
     ]
     duration_units = r"分钟|秒钟|minutes|minute|seconds|second|mins|secs|min|sec|分|秒|m|s"
@@ -1018,6 +1053,10 @@ def enforce_collection_gate(project: ProjectState, payload: dict[str, Any], gene
 
 
 def compose_reply(project: ProjectState, payload: dict[str, Any], generation_mode: str, missing_text: str = "", latest_message: str = "") -> str:
+    if is_unrelated_intent(payload):
+        reply = sanitize_reply_text(str(payload.get("reply") or ""), "")
+        return reply or "我专注于当前分镜脚本项目的编排、生成和修改；这个问题与项目无关，我先不展开回答。"
+
     receipt = build_update_receipt(project, payload, latest_message)
     reply = sanitize_reply_text(str(payload.get("reply") or ""), missing_text)
     ready_mode = str(project.selection_state.pop("ready_generation_mode", "") or "")
@@ -1042,7 +1081,7 @@ def compose_reply(project: ProjectState, payload: dict[str, Any], generation_mod
     elif reply and not receipt and reply not in parts:
         parts.append(reply)
 
-    if project.workflow_stage in {"proposal", "full", "export"} and generation_mode == "none":
+    if project.workflow_stage in {"proposal", "full", "export"} and generation_mode == "none" and not is_unrelated_intent(payload):
         parts.append("这条补充我已经记录，会影响后续生成或下一轮重生成。")
 
     return "\n\n".join(part for part in parts if part).strip()
@@ -1050,7 +1089,7 @@ def compose_reply(project: ProjectState, payload: dict[str, Any], generation_mod
 
 def project_source_text(project: ProjectState) -> str:
     parts: list[str] = []
-    parts.extend(message.content for message in project.messages[-12:])
+    parts.extend(message.content for message in project.messages[-12:] if is_project_relevant_message(message))
     for asset in project.assets:
         parts.append(asset.summary)
         parts.append(asset.extracted_text[:1200])
@@ -1260,10 +1299,15 @@ def stream_chat(project: ProjectState, message: str) -> StreamingResponse:
             yield sse_event({"type": "asset_status", "asset": asset.model_dump()})
 
         analysis = analyze_user_message(project, message)
-        apply_project_updates(project, analysis, message)
-
-        generation_mode = normalize_generation_mode(analysis.get("generation_mode"), project, message)
-        missing_text, auto_filled, generation_mode = enforce_collection_gate(project, analysis, generation_mode)
+        if is_unrelated_intent(analysis):
+            user_message.message_type = "unrelated"
+            generation_mode = "none"
+            missing_text = ""
+            auto_filled = False
+        else:
+            apply_project_updates(project, analysis, message)
+            generation_mode = normalize_generation_mode(analysis.get("generation_mode"), project, message)
+            missing_text, auto_filled, generation_mode = enforce_collection_gate(project, analysis, generation_mode)
         refresh_project_context(project, generation_mode, missing_text)
 
         if auto_filled and generation_mode == "none" and not analysis.get("reply"):
