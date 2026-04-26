@@ -4,6 +4,7 @@ import base64
 import os
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from uuid import uuid4
 
 import cv2
@@ -14,7 +15,7 @@ from docx import Document
 from pypdf import PdfReader
 
 from .models import ProjectAsset, ProjectState
-from .storage import ensure_project, project_dir, safe_filename, save_project
+from .storage import ensure_project, load_project, project_dir, safe_filename, save_project
 
 
 ALLOWED_EXTENSIONS = {
@@ -38,6 +39,7 @@ MAX_BYTES = {
 MAX_ASSETS_PER_PROJECT = 20
 MAX_PDF_PAGES = 30
 MAX_TEXT_CHARS = 12000
+PROJECT_ASSET_LOCKS: dict[str, Lock] = {}
 
 
 def now_iso() -> str:
@@ -48,8 +50,27 @@ def asset_dir(project_id: str) -> Path:
     return project_dir(project_id) / "assets"
 
 
+def project_asset_lock(project_id: str) -> Lock:
+    if project_id not in PROJECT_ASSET_LOCKS:
+        PROJECT_ASSET_LOCKS[project_id] = Lock()
+    return PROJECT_ASSET_LOCKS[project_id]
+
+
+def merge_asset_into_project(project_id: str, asset: ProjectAsset, add_if_missing: bool = True) -> ProjectState | None:
+    with project_asset_lock(project_id):
+        try:
+            project = load_project(project_id)
+        except FileNotFoundError:
+            project = ProjectState(id=project_id)
+        if not add_if_missing and not any(item.id == asset.id for item in project.assets):
+            return None
+        project.assets = [item for item in project.assets if item.id != asset.id] + [asset]
+        return save_project(project)
+
+
 def normalize_asset_type(value: str | None) -> str:
-    return value if value in {"reference", "brand", "other"} else "other"
+    allowed = {"company_intro", "reference", "content_unit", "brand", "other"}
+    return value if value in allowed else "other"
 
 
 def detect_kind(filename: str) -> tuple[str, str]:
@@ -91,7 +112,24 @@ async def upload_asset(project: ProjectState, upload: UploadFile, asset_type: st
         status="processing",
     )
 
+    asset.updated_at = now_iso()
+    (folder / f"{asset_id}.json").write_text(asset.model_dump_json(indent=2), encoding="utf-8")
+    project = merge_asset_into_project(project.id, asset)
+    return project, asset
+
+
+def parse_uploaded_asset(project_id: str, asset_id: str) -> None:
+    folder = asset_dir(project_id)
+    asset_path = folder / f"{asset_id}.json"
+    if not asset_path.exists():
+        return
+
+    asset = ProjectAsset.model_validate_json(asset_path.read_text(encoding="utf-8"))
     try:
+        _, kind = detect_kind(asset.original_filename)
+        path = Path(asset.path)
+        if not path.exists():
+            raise FileNotFoundError(f"素材文件不存在：{asset.original_filename}")
         parsed = parse_asset(path, kind, asset)
         asset.summary = parsed["summary"]
         asset.extracted_text = parsed.get("extracted_text", "")
@@ -100,13 +138,11 @@ async def upload_asset(project: ProjectState, upload: UploadFile, asset_type: st
     except Exception as exc:
         asset.status = "failed"
         asset.error = str(exc)
-        asset.summary = f"素材《{original_name}》已上传，但解析失败：{exc}"
+        asset.summary = f"素材《{asset.original_filename}》已上传，但解析失败：{exc}"
 
     asset.updated_at = now_iso()
-    (folder / f"{asset_id}.json").write_text(asset.model_dump_json(indent=2), encoding="utf-8")
-    project.assets = [item for item in project.assets if item.id != asset.id] + [asset]
-    save_project(project)
-    return project, asset
+    asset_path.write_text(asset.model_dump_json(indent=2), encoding="utf-8")
+    merge_asset_into_project(project_id, asset, add_if_missing=False)
 
 
 def parse_asset(path: Path, kind: str, asset: ProjectAsset) -> dict[str, str]:
@@ -320,23 +356,24 @@ def summarize_images(paths: list[Path], prompt: str) -> str:
 
 def delete_asset(project: ProjectState, asset_id: str) -> ProjectState:
     project = ensure_project(project)
-    asset = next((item for item in project.assets if item.id == asset_id), None)
-    if not asset:
-        raise FileNotFoundError(f"Asset not found: {asset_id}")
-    folder = asset_dir(project.id).resolve()
-    path = Path(asset.path).resolve()
-    if folder not in path.parents:
-        raise ValueError("Unsafe asset path.")
-    path.unlink(missing_ok=True)
-    (folder / f"{asset_id}.json").unlink(missing_ok=True)
-    frames = folder / f"{path.stem}_frames"
-    if frames.exists():
-        for child in frames.glob("*"):
-            child.unlink(missing_ok=True)
-        frames.rmdir()
-    project.assets = [item for item in project.assets if item.id != asset_id]
-    save_project(project)
-    return project
+    with project_asset_lock(project.id):
+        asset = next((item for item in project.assets if item.id == asset_id), None)
+        if not asset:
+            raise FileNotFoundError(f"Asset not found: {asset_id}")
+        folder = asset_dir(project.id).resolve()
+        path = Path(asset.path).resolve()
+        if folder not in path.parents:
+            raise ValueError("Unsafe asset path.")
+        path.unlink(missing_ok=True)
+        (folder / f"{asset_id}.json").unlink(missing_ok=True)
+        frames = folder / f"{path.stem}_frames"
+        if frames.exists():
+            for child in frames.glob("*"):
+                child.unlink(missing_ok=True)
+            frames.rmdir()
+        project.assets = [item for item in project.assets if item.id != asset_id]
+        save_project(project)
+        return project
 
 
 def asset_download_path(project: ProjectState, asset_id: str) -> Path:

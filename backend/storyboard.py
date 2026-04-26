@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import json
+import html
+import re
 import subprocess
 import sys
 from datetime import datetime
@@ -77,7 +79,13 @@ def latest_project(project: ProjectState) -> ProjectState:
 def describe_assets(assets: list[ProjectAsset]) -> str:
     if not assets:
         return "未上传素材。"
-    labels = {"reference": "参考样片", "brand": "品牌资产", "other": "其他补充材料"}
+    labels = {
+        "company_intro": "公司介绍",
+        "reference": "视频参考素材",
+        "content_unit": "内容单元素材",
+        "brand": "品牌资产",
+        "other": "其他补充材料",
+    }
     lines: list[str] = []
     for index, asset in enumerate(assets, 1):
         label = labels.get(asset.asset_type, "其他补充材料")
@@ -273,6 +281,335 @@ def write_markdown(project: ProjectState, markdown: str | None = None, version: 
     return project, path
 
 
+def inline_markdown(text: str) -> str:
+    escaped = html.escape(text.strip())
+    escaped = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"`(.+?)`", r"<code>\1</code>", escaped)
+    return escaped
+
+
+def markdown_table_to_html(rows: list[str]) -> str:
+    parsed_rows = [[inline_markdown(cell) for cell in row.strip().strip("|").split("|")] for row in rows]
+    parsed_rows = [row for row in parsed_rows if row and not all(re.fullmatch(r":?-{3,}:?", cell.strip()) for cell in row)]
+    if not parsed_rows:
+        return ""
+    header = parsed_rows[0]
+    body = parsed_rows[1:]
+    head_html = "".join(f"<th>{cell}</th>" for cell in header)
+    body_html = "".join("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>" for row in body)
+    return f'<div class="table-card"><div class="table-scroll"><table><thead><tr>{head_html}</tr></thead><tbody>{body_html}</tbody></table></div></div>'
+
+
+def markdown_to_reading_html(markdown: str) -> str:
+    lines = markdown.splitlines()
+    blocks: list[str] = []
+    paragraph: list[str] = []
+    table_rows: list[str] = []
+    list_items: list[str] = []
+
+    def flush_paragraph() -> None:
+        nonlocal paragraph
+        if paragraph:
+            blocks.append(f"<p>{inline_markdown(' '.join(paragraph))}</p>")
+            paragraph = []
+
+    def flush_table() -> None:
+        nonlocal table_rows
+        if table_rows:
+            blocks.append(markdown_table_to_html(table_rows))
+            table_rows = []
+
+    def flush_list() -> None:
+        nonlocal list_items
+        if list_items:
+            items = "".join(f"<li>{inline_markdown(item)}</li>" for item in list_items)
+            blocks.append(f'<ul class="bullet-list">{items}</ul>')
+            list_items = []
+
+    for raw_line in lines:
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        if not stripped:
+            flush_paragraph()
+            flush_table()
+            flush_list()
+            continue
+        if stripped.startswith("|") and stripped.endswith("|"):
+            flush_paragraph()
+            flush_list()
+            table_rows.append(stripped)
+            continue
+        flush_table()
+        heading = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if heading:
+            flush_paragraph()
+            flush_list()
+            level = min(len(heading.group(1)) + 1, 4)
+            blocks.append(f"<h{level}>{inline_markdown(heading.group(2))}</h{level}>")
+            continue
+        bullet = re.match(r"^[-*]\s+(.+)$", stripped)
+        if bullet:
+            flush_paragraph()
+            list_items.append(bullet.group(1))
+            continue
+        numbered = re.match(r"^\d+[.、]\s+(.+)$", stripped)
+        if numbered:
+            flush_paragraph()
+            list_items.append(numbered.group(1))
+            continue
+        paragraph.append(stripped)
+
+    flush_paragraph()
+    flush_table()
+    flush_list()
+    return "\n".join(block for block in blocks if block)
+
+
+def build_reading_html(project: ProjectState, markdown: str, version: str) -> str:
+    meta = project.meta
+    title = f"{meta.project_name or '未命名项目'}分镜脚本"
+    body = markdown_to_reading_html(markdown)
+    generated_at = datetime.now().strftime("%Y-%m-%d")
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html.escape(title)} · {html.escape(version_label(version))}</title>
+  <style>
+    :root {{
+      --bg: #eef3f7;
+      --paper: rgba(255,255,255,.84);
+      --paper-strong: #ffffff;
+      --ink: #102330;
+      --muted: #586c79;
+      --line: rgba(16,35,48,.12);
+      --brand: #0f5d79;
+      --brand-soft: #dcebf1;
+      --accent: #b88a53;
+      --shadow: 0 24px 60px rgba(20,49,66,.12);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+    }}
+    * {{ box-sizing: border-box; }}
+    html {{ scroll-behavior: smooth; }}
+    body {{
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(184,138,83,.12), transparent 28%),
+        radial-gradient(circle at right 10% top 15%, rgba(15,93,121,.12), transparent 24%),
+        linear-gradient(180deg, #f4f7fa 0%, #eef3f7 48%, #e9eef3 100%);
+      font: 16px/1.85 "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei UI", sans-serif;
+    }}
+    .page {{
+      width: min(1180px, calc(100vw - 40px));
+      margin: 28px auto 56px;
+    }}
+    .hero {{
+      padding: 30px 34px;
+      border-radius: var(--radius-xl);
+      color: #eff7fa;
+      background:
+        linear-gradient(135deg, rgba(10,27,41,.96), rgba(16,63,84,.92)),
+        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }}
+    .hero::after {{
+      content: "";
+      position: absolute;
+      inset: auto -10% -28% auto;
+      width: 380px;
+      height: 380px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.16), transparent 62%);
+      z-index: -1;
+    }}
+    .eyebrow {{
+      margin: 0 0 10px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      font-size: 12px;
+      color: rgba(239,247,250,.68);
+    }}
+    h1, h2, h3, h4 {{
+      margin: 0;
+      font-family: "Source Han Serif SC", "Noto Serif CJK SC", "STSong", serif;
+      line-height: 1.3;
+    }}
+    h1 {{
+      font-size: clamp(28px, 3vw, 42px);
+      line-height: 1.22;
+    }}
+    .hero-meta {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }}
+    .hero-meta span {{
+      padding: 6px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      font-size: 12px;
+    }}
+    .content-section {{
+      margin-top: 24px;
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      background: var(--paper);
+      border: 1px solid rgba(255,255,255,.65);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }}
+    h2 {{
+      margin-top: 34px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: clamp(26px, 2.4vw, 34px);
+      color: #102330;
+    }}
+    h2:first-child {{ margin-top: 0; }}
+    h3 {{
+      margin-top: 28px;
+      margin-bottom: 12px;
+      font-size: 23px;
+      color: #17384c;
+    }}
+    h4 {{
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-size: 18px;
+      color: #20495f;
+    }}
+    p {{
+      margin: 0 0 14px;
+      color: #203643;
+    }}
+    .bullet-list {{
+      margin: 10px 0 18px;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }}
+    .bullet-list li {{
+      position: relative;
+      padding: 14px 16px 14px 42px;
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(15,93,121,.05), rgba(255,255,255,.68));
+      border: 1px solid rgba(15,93,121,.09);
+    }}
+    .bullet-list li::before {{
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: 21px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 0 5px rgba(15,93,121,.12);
+    }}
+    .table-card {{
+      margin: 16px 0 22px;
+      padding: 10px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(235,241,246,.86));
+      border: 1px solid rgba(16,35,48,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+    }}
+    .table-scroll {{
+      overflow: auto;
+      border-radius: 14px;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+      background: rgba(255,255,255,.88);
+    }}
+    th, td {{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(16,35,48,.09);
+      text-align: left;
+      vertical-align: top;
+    }}
+    th {{
+      color: #17384c;
+      background: var(--brand-soft);
+      white-space: nowrap;
+    }}
+    td {{ color: #2b414f; }}
+    code {{
+      padding: 2px 6px;
+      border-radius: 8px;
+      background: rgba(15,93,121,.08);
+      color: #0f5d79;
+    }}
+    .footer {{
+      margin-top: 22px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 13px;
+    }}
+    @media (max-width: 760px) {{
+      .page {{ width: min(100vw - 24px, 1180px); margin-top: 12px; }}
+      .hero, .content-section {{ padding: 22px; border-radius: 18px; }}
+      table {{ min-width: 640px; }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="eyebrow">STORYBOARD READING EDITION</p>
+      <h1>{html.escape(title)}</h1>
+      <div class="hero-meta">
+        <span>{html.escape(version_label(version))}</span>
+        <span>{html.escape(meta.video_type or "宣传片")}</span>
+        <span>{html.escape(meta.duration or "时长待定")}</span>
+        <span>{html.escape(meta.aspect_ratio or "比例待定")}</span>
+        <span>{html.escape(generated_at)}</span>
+      </div>
+    </section>
+    <section class="content-section">
+      {body}
+    </section>
+    <p class="footer">Generated by AI Director Workbench</p>
+  </main>
+</body>
+</html>
+"""
+
+
+def write_html(project: ProjectState, markdown: str | None = None, version: str = "full") -> tuple[ProjectState, Path]:
+    project = ensure_project(project)
+    folder = project_dir(project.id)
+    folder.mkdir(parents=True, exist_ok=True)
+    version = normalize_version(version)
+    content = markdown or (project.proposal_markdown if version == "proposal" else project.full_markdown or project.final_markdown)
+    content = assemble_markdown(project, content or None)
+    filename = f"{safe_filename(project.meta.project_name)}_{safe_filename(version_label(version))}_阅读版.html"
+    path = folder / filename
+    path.write_text(build_reading_html(project, content, version), encoding="utf-8")
+    project.active_version = version
+    if version == "proposal":
+        project.proposal_markdown = content
+    else:
+        project.full_markdown = content
+        project.final_markdown = content
+        project.exports["html"] = str(path)
+    project.exports[export_key(version, "html")] = str(path)
+    save_project(project)
+    return project, path
+
+
 def build_creative_preview_prompt(project: ProjectState) -> str:
     return f"""你是资深宣传片策划。请像 Codex 交互式确认一样，在正式生成完整分镜脚本之前，先给用户一份“创作预览与确认项”。
 
@@ -304,6 +641,142 @@ def generate_creative_preview(project: ProjectState) -> tuple[ProjectState, str]
     )
     save_project(project)
     return project, content
+
+
+def intake_context(project: ProjectState) -> str:
+    intake = project.selection_state.get("intakeSummary") or "暂无资料整理结果。"
+    logic = project.selection_state.get("logicRecommendations") or "暂无内容逻辑推荐。"
+    selected = project.selection_state.get("selectedLogic") or "用户尚未确认内容逻辑。"
+    return f"""资料整理结果：
+{intake}
+
+内容逻辑推荐：
+{logic}
+
+用户已确认的内容逻辑：
+{selected}"""
+
+
+def build_intake_summary_prompt(project: ProjectState) -> str:
+    return f"""你是资深宣传片策划和分镜导演。请基于用户一次性填写的信息、内容单元和上传素材摘要，先为用户做“资料整理与内容逻辑推荐”，不要生成提案版或完整版。
+
+项目资料：
+{project_brief(project)}
+
+输出要求：
+- 使用中文 Markdown。
+- 直接输出给用户看的整理结果，不要解释生成过程。
+- 必须先输出“项目信息汇总表”，用表格整理项目名称、客户类型、影片类型、时长、风格基调、成片比例、素材吸收情况等核心信息。
+- 必须输出“内容单元概览表”，用表格整理本片要拍什么、讲什么、可用素材、表达重点、备注。
+- 必须输出“Phase 2：内容逻辑推荐”，格式固定如下：
+  1. 先写一句“基于项目特性（...），推荐以下内容逻辑：”
+  2. 单独一行写“推荐逻辑：某某递进”
+  3. 单独一行写该逻辑的主线，例如“痛点引入 → 核心能力 → 场景验证 → 成片交付 → 价值升华”
+  4. 必须输出 Markdown 表格，表头固定为“逻辑类型｜适用性｜说明”；根据项目实际给 2-5 个候选逻辑，推荐项适用性写“最佳匹配”，其他写“备选”或“不适用”。
+  5. 必须输出“建议叙事结构”，用开场/第一篇章/第二篇章/第三篇章/结尾列出时间和内容。
+- 必须在最后输出“请确认：内容逻辑是否满意？如需调整，请直接输入修改意见。”
+- 如果信息不足，可以写成“待补充”或“执行假设”，不要向用户追问。
+"""
+
+
+def build_logic_recommendation_prompt(project: ProjectState) -> str:
+    revision_note = project.selection_state.get("logicRevisionNote") or "用户未提供额外修改意见。"
+    current = project.selection_state.get("logicRecommendations") or "暂无既有推荐。"
+    return f"""你是资深宣传片策划。请根据当前项目资料和用户修改意见，重新生成“内容逻辑推荐”。
+
+项目资料：
+{project_brief(project)}
+
+资料整理结果：
+{project.selection_state.get("intakeSummary") or "暂无资料整理结果。"}
+
+当前推荐：
+{current}
+
+用户修改意见：
+{revision_note}
+
+输出要求：
+- 使用中文 Markdown。
+- 只输出新的内容逻辑推荐，不要生成提案版或完整版。
+- 输出格式必须固定为：
+  1. “Phase 2：内容逻辑推荐”
+  2. “推荐逻辑：某某递进”
+  3. 一条主线箭头链路，例如“痛点引入 → 核心能力 → 场景验证 → 成片交付 → 价值升华”
+  4. Markdown 表格，表头固定为“逻辑类型｜适用性｜说明”；根据项目实际给 2-5 个候选逻辑，推荐项适用性写“最佳匹配”，其他写“备选”或“不适用”。
+  5. “建议叙事结构”：用开场/第一篇章/第二篇章/第三篇章/结尾列出时间和内容。
+  6. “请确认：内容逻辑是否满意？如需调整，请直接输入修改意见。”
+- 修改意见优先，但如果修改意见会削弱成片效果，请用温和方式给出更合适的推荐。
+"""
+
+
+def stream_selection_document(project: ProjectState, prompt: str, selection_key: str, step_key: str, step_title: str) -> StreamingResponse:
+    api_key = os.getenv("LLM_API_KEY") or os.getenv("KIMI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="LLM_API_KEY is not configured on the server.")
+
+    project = ensure_project(project)
+
+    def event_stream():
+        client = OpenAI(
+            api_key=api_key,
+            base_url=os.getenv("LLM_BASE_URL") or os.getenv("KIMI_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/"),
+        )
+        collected: list[str] = []
+        try:
+            response = client.chat.completions.create(
+                model=os.getenv("LLM_MODEL") or os.getenv("KIMI_MODEL", "glm-5.1"),
+                messages=[
+                    {"role": "system", "content": "你是专业视频策划、宣传片导演和分镜脚本顾问。"},
+                    {"role": "user", "content": prompt},
+                ],
+                stream=True,
+            )
+            for chunk in response:
+                delta = chunk.choices[0].delta.content if chunk.choices else None
+                if delta:
+                    collected.append(delta)
+                    yield f"data: {json.dumps({'type': 'delta', 'content': delta}, ensure_ascii=False)}\n\n"
+
+            content = "".join(collected)
+            project.selection_state[selection_key] = content
+            if selection_key == "intakeSummary":
+                project.selection_state["logicRecommendations"] = content
+            project.steps[step_key] = StepResult(
+                key=step_key,
+                title=step_title,
+                content=content,
+                confirmed=False,
+                updated_at=datetime.now().isoformat(timespec="seconds"),
+            )
+            save_project(project)
+            yield f"data: {json.dumps({'type': 'done', 'project': project.model_dump()}, ensure_ascii=False)}\n\n"
+        except APIError as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': f'LLM API 调用失败：{exc.message}'}, ensure_ascii=False)}\n\n"
+        except Exception as exc:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(exc)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+def stream_intake_summary(project: ProjectState) -> StreamingResponse:
+    return stream_selection_document(
+        project,
+        build_intake_summary_prompt(project),
+        "intakeSummary",
+        "intake_summary",
+        "资料整理与内容逻辑推荐",
+    )
+
+
+def stream_logic_recommendation(project: ProjectState) -> StreamingResponse:
+    return stream_selection_document(
+        project,
+        build_logic_recommendation_prompt(project),
+        "logicRecommendations",
+        "logic_recommendation",
+        "内容逻辑重新推荐",
+    )
 
 
 def stream_creative_preview(project: ProjectState) -> StreamingResponse:
@@ -389,6 +862,9 @@ def build_proposal_document_prompt(project: ProjectState) -> str:
 项目资料：
 {project_brief(project)}
 
+资料整理与内容逻辑确认：
+{intake_context(project)}
+
 创作预览与用户确认：
 {project.steps.get("preview").content if project.steps.get("preview") else "暂无"}
 
@@ -433,6 +909,9 @@ def build_full_document_prompt(project: ProjectState) -> str:
 
 项目资料：
 {project_brief(project)}
+
+资料整理与内容逻辑确认：
+{intake_context(project)}
 
 提案版内容：
 {proposal_context}

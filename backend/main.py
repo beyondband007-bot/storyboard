@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,15 +21,18 @@ from .models import (
     ProjectState,
     SaveProjectRequest,
 )
-from .assets import asset_download_path, delete_asset, upload_asset
+from .assets import asset_download_path, delete_asset, parse_uploaded_asset, upload_asset
 from .storage import OUTPUTS_DIR, delete_project, load_project, project_dir, safe_filename, save_project, list_projects
 from .storyboard import (
     generate_creative_preview,
     generate_step,
     stream_creative_preview,
     stream_full_document,
+    stream_intake_summary,
+    stream_logic_recommendation,
     stream_proposal_document,
     write_docx,
+    write_html,
     write_markdown,
 )
 
@@ -98,6 +101,7 @@ def remove_project(project_id: str) -> dict[str, str]:
 @app.post("/api/projects/{project_id}/assets/upload", response_model=AssetUploadResponse)
 async def upload_project_asset(
     project_id: str,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     asset_type: str = Form("other"),
 ) -> AssetUploadResponse:
@@ -107,6 +111,7 @@ async def upload_project_asset(
         project = ProjectState(id=project_id)
         save_project(project)
     project, asset = await upload_asset(project, file, asset_type)
+    background_tasks.add_task(parse_uploaded_asset, project.id, asset.id)
     return AssetUploadResponse(project=project, asset=asset)
 
 
@@ -156,6 +161,16 @@ def generate_proposal_stream(payload: GenerateFullRequest):
     return stream_proposal_document(payload.project)
 
 
+@app.post("/api/generate/intake-summary/stream")
+def generate_intake_summary_stream(payload: GenerateFullRequest):
+    return stream_intake_summary(payload.project)
+
+
+@app.post("/api/generate/logic-recommendation/stream")
+def generate_logic_recommendation_stream(payload: GenerateFullRequest):
+    return stream_logic_recommendation(payload.project)
+
+
 @app.post("/api/generate/preview", response_model=PreviewResponse)
 def generate_preview(payload: GenerateFullRequest) -> PreviewResponse:
     project, content = generate_creative_preview(payload.project)
@@ -189,14 +204,27 @@ def export_docx(payload: ExportRequest) -> ExportResponse:
     )
 
 
+@app.post("/api/export/html", response_model=ExportResponse)
+def export_html(payload: ExportRequest) -> ExportResponse:
+    project, path = write_html(payload.project, payload.markdown, payload.version)
+    return ExportResponse(
+        project=project,
+        filename=path.name,
+        path=str(path),
+        download_url=f"/api/download/{project.id}/export/{payload.version}/html",
+    )
+
+
 @app.post("/api/export/{version}/{kind}", response_model=ExportResponse)
 def export_versioned(version: str, kind: str, payload: ExportRequest) -> ExportResponse:
-    if version not in {"proposal", "full"} or kind not in {"markdown", "docx"}:
+    if version not in {"proposal", "full"} or kind not in {"markdown", "docx", "html"}:
         raise HTTPException(status_code=404, detail="Unknown export type")
     if kind == "markdown":
         project, path = write_markdown(payload.project, payload.markdown, version)
-    else:
+    elif kind == "docx":
         project, path = write_docx(payload.project, payload.markdown, version)
+    else:
+        project, path = write_html(payload.project, payload.markdown, version)
     return ExportResponse(
         project=project,
         filename=path.name,
@@ -207,7 +235,7 @@ def export_versioned(version: str, kind: str, payload: ExportRequest) -> ExportR
 
 @app.get("/api/download/{project_id}/export/{version}/{kind}")
 def download_versioned_export(project_id: str, version: str, kind: str):
-    if version not in {"proposal", "full"} or kind not in {"markdown", "docx"}:
+    if version not in {"proposal", "full"} or kind not in {"markdown", "docx", "html"}:
         raise HTTPException(status_code=404, detail="Unknown export type")
     try:
         project = load_project(project_id)
@@ -217,9 +245,10 @@ def download_versioned_export(project_id: str, version: str, kind: str):
     folder = project_dir(project_id).resolve()
     path = Path(export_path).resolve() if export_path else None
     if not path or folder not in path.parents or not path.exists():
-        suffix = ".docx" if kind == "docx" else ".md"
+        suffix = ".docx" if kind == "docx" else ".html" if kind == "html" else ".md"
         label = "提案版" if version == "proposal" else "完整版"
-        candidates = sorted(folder.glob(f"*_{label}{suffix}"), key=lambda item: item.stat().st_mtime, reverse=True)
+        pattern = f"*_{label}*{suffix}" if kind == "html" else f"*_{label}{suffix}"
+        candidates = sorted(folder.glob(pattern), key=lambda item: item.stat().st_mtime, reverse=True)
         path = candidates[0].resolve() if candidates else None
     if not path or folder not in path.parents or not path.exists():
         raise HTTPException(status_code=404, detail=f"{version} {kind} export not found")
@@ -228,7 +257,7 @@ def download_versioned_export(project_id: str, version: str, kind: str):
 
 @app.get("/api/download/{project_id}/export/{kind}")
 def download_export(project_id: str, kind: str):
-    if kind not in {"markdown", "docx"}:
+    if kind not in {"markdown", "docx", "html"}:
         raise HTTPException(status_code=404, detail="Unknown export type")
     try:
         project = load_project(project_id)
@@ -238,7 +267,7 @@ def download_export(project_id: str, kind: str):
     folder = project_dir(project_id).resolve()
     path = Path(export_path).resolve() if export_path else None
     if not path or folder not in path.parents or not path.exists():
-        suffix = ".docx" if kind == "docx" else ".md"
+        suffix = ".docx" if kind == "docx" else ".html" if kind == "html" else ".md"
         candidates = sorted(folder.glob(f"*{suffix}"), key=lambda item: item.stat().st_mtime, reverse=True)
         path = candidates[0].resolve() if candidates else None
     if not path or folder not in path.parents or not path.exists():
