@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from .time_utils import now_iso
 
 
 class ContentUnit(BaseModel):
@@ -51,8 +52,8 @@ class ProjectAsset(BaseModel):
     extracted_text: str = ""
     status: str = "uploaded"
     error: str = ""
-    created_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
-    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
 
 
 class ProjectState(BaseModel):
@@ -70,8 +71,8 @@ class ProjectState(BaseModel):
     final_markdown: str = ""
     exports: dict[str, str] = Field(default_factory=dict)
     assets: list[ProjectAsset] = Field(default_factory=list)
-    created_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
-    updated_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
 
 
 class ProjectSummary(BaseModel):

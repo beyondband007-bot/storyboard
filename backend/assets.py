@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import base64
 import os
-from datetime import datetime
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -16,6 +15,7 @@ from pypdf import PdfReader
 
 from .models import ProjectAsset, ProjectState
 from .storage import ensure_project, load_project, project_dir, safe_filename, save_project
+from .time_utils import now_iso
 
 
 ALLOWED_EXTENSIONS = {
@@ -40,10 +40,6 @@ MAX_ASSETS_PER_PROJECT = 20
 MAX_PDF_PAGES = 30
 MAX_TEXT_CHARS = 12000
 PROJECT_ASSET_LOCKS: dict[str, Lock] = {}
-
-
-def now_iso() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def asset_dir(project_id: str) -> Path:

@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 import re
 import shutil
-from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 from .models import ProjectState, ProjectSummary
+from .time_utils import now_iso, parse_iso_datetime
 
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -17,10 +17,6 @@ OUTPUTS_DIR = Path("/app/outputs") if Path("/app").exists() else ROOT_DIR / "out
 def safe_filename(value: str) -> str:
     cleaned = re.sub(r'[\\/:*?"<>|\r\n]+', "_", value).strip()
     return cleaned or "未命名项目"
-
-
-def now_iso() -> str:
-    return datetime.now().isoformat(timespec="seconds")
 
 
 def project_dir(project_id: str) -> Path:
@@ -144,4 +140,4 @@ def list_projects() -> list[ProjectSummary]:
                 updated_at=project.updated_at,
             )
         )
-    return sorted(summaries, key=lambda item: item.updated_at, reverse=True)
+    return sorted(summaries, key=lambda item: parse_iso_datetime(item.updated_at), reverse=True)

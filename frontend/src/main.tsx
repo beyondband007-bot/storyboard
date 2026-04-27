@@ -141,7 +141,7 @@ type LogicOption = {
   description: string;
 };
 
-const nowIso = () => new Date().toISOString().slice(0, 19);
+const chinaTimeZone = "Asia/Shanghai";
 const optionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const genericLogicTitles = new Set(["内容逻辑推荐", "动态内容逻辑推荐", "内容逻辑", "逻辑推荐", "叙事逻辑推荐"]);
 const genericStyleTitles = new Set(["文风推荐", "推荐文风", "文风确认", "文案风格推荐", "文案风格"]);
@@ -246,9 +246,55 @@ async function streamProject(
   return finalProject;
 }
 
+function getChinaDateParts(date: Date): Record<string, string> {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: chinaTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  })
+    .formatToParts(date)
+    .reduce((parts, part) => {
+      if (part.type !== "literal") parts[part.type] = part.value;
+      return parts;
+    }, {} as Record<string, string>);
+}
+
+const nowIso = () => {
+  const parts = getChinaDateParts(new Date());
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}+08:00`;
+};
+
+function parseStoredDate(value: string): Date | null {
+  if (!value) return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+
+  if (/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)) {
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) {
+    const fallback = new Date(normalized);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+  }
+
+  const [, year, month, day, hour, minute, second = "00"] = match;
+  return new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}+08:00`);
+}
+
 function formatTime(value: string): string {
   if (!value) return "";
-  return value.replace("T", " ").slice(0, 16);
+  const parsed = parseStoredDate(value);
+  if (!parsed) return value.replace("T", " ").slice(0, 16);
+  const parts = getChinaDateParts(parsed);
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 function formatSize(size: number): string {
