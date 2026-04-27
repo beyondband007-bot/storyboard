@@ -36,6 +36,7 @@ class ChatMessage(BaseModel):
     role: str
     content: str
     streaming: bool = False
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProjectAsset(BaseModel):

@@ -175,14 +175,16 @@ def create_storyboard_docx(data, output_path):
             table_data = content  # List of lists
             if table_data and len(table_data) > 0:
                 rows = len(table_data)
-                cols = len(table_data[0])
+                cols = max((len(row_data) for row_data in table_data), default=0)
+                if cols == 0:
+                    continue
                 table = doc.add_table(rows=rows, cols=cols)
                 table.alignment = WD_TABLE_ALIGNMENT.CENTER
 
                 # Fill table data
                 for i, row_data in enumerate(table_data):
                     row = table.rows[i]
-                    for j, cell_text in enumerate(row_data):
+                    for j, cell_text in enumerate(row_data[:cols]):
                         cell = row.cells[j]
                         cell.text = str(cell_text)
 

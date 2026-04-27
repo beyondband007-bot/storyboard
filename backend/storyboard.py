@@ -79,13 +79,7 @@ def latest_project(project: ProjectState) -> ProjectState:
 def describe_assets(assets: list[ProjectAsset]) -> str:
     if not assets:
         return "未上传素材。"
-    labels = {
-        "company_intro": "公司介绍",
-        "reference": "视频参考素材",
-        "content_unit": "内容单元素材",
-        "brand": "品牌资产",
-        "other": "其他补充材料",
-    }
+    labels = {"reference": "参考样片", "brand": "品牌资产", "other": "其他补充材料"}
     lines: list[str] = []
     for index, asset in enumerate(assets, 1):
         label = labels.get(asset.asset_type, "其他补充材料")
@@ -609,7 +603,6 @@ def write_html(project: ProjectState, markdown: str | None = None, version: str 
     save_project(project)
     return project, path
 
-
 def build_creative_preview_prompt(project: ProjectState) -> str:
     return f"""你是资深宣传片策划。请像 Codex 交互式确认一样，在正式生成完整分镜脚本之前，先给用户一份“创作预览与确认项”。
 
@@ -647,6 +640,8 @@ def intake_context(project: ProjectState) -> str:
     intake = project.selection_state.get("intakeSummary") or "暂无资料整理结果。"
     logic = project.selection_state.get("logicRecommendations") or "暂无内容逻辑推荐。"
     selected = project.selection_state.get("selectedLogic") or "用户尚未确认内容逻辑。"
+    style = project.selection_state.get("styleRecommendations") or "暂无文风推荐。"
+    selected_style = project.selection_state.get("selectedWritingStyle") or "用户尚未确认文风。"
     return f"""资料整理结果：
 {intake}
 
@@ -654,7 +649,13 @@ def intake_context(project: ProjectState) -> str:
 {logic}
 
 用户已确认的内容逻辑：
-{selected}"""
+{selected}
+
+文风推荐：
+{style}
+
+用户已确认的文风：
+{selected_style}"""
 
 
 def build_intake_summary_prompt(project: ProjectState) -> str:
@@ -706,6 +707,45 @@ def build_logic_recommendation_prompt(project: ProjectState) -> str:
   4. Markdown 表格，表头固定为“逻辑类型｜适用性｜说明”；根据项目实际给 2-5 个候选逻辑，推荐项适用性写“最佳匹配”，其他写“备选”或“不适用”。
   5. “建议叙事结构”：用开场/第一篇章/第二篇章/第三篇章/结尾列出时间和内容。
   6. “请确认：内容逻辑是否满意？如需调整，请直接输入修改意见。”
+- 修改意见优先，但如果修改意见会削弱成片效果，请用温和方式给出更合适的推荐。
+"""
+
+
+def build_style_recommendation_prompt(project: ProjectState) -> str:
+    revision_note = project.selection_state.get("styleRevisionNote") or "用户未提供额外修改意见。"
+    current = project.selection_state.get("styleRecommendations") or "暂无既有文风推荐。"
+    return f"""你是资深宣传片文案策划。请根据当前项目资料、用户已确认的内容逻辑和上下文内容，生成“文风推荐”，不要生成提案版或完整版。
+
+项目资料：
+{project_brief(project)}
+
+资料整理与逻辑上下文：
+{intake_context(project)}
+
+当前文风推荐：
+{current}
+
+用户修改意见：
+{revision_note}
+
+可参考的常见文风：
+- 基础通用：简洁干练、朴实平实、严谨正式、通俗易懂。
+- 文艺抒情：温柔治愈、清冷疏离、唯美诗意、古风古韵、伤感悲情。
+- 故事小说：热血激昂、沙雕搞笑、悬疑压抑、细腻写实、甜宠软糯。
+- 小众特色：极简冷淡、华丽繁复、破碎疯批、市井烟火、暗黑哥特。
+- 网络流行：ins 风小众、韩系温柔、中式留白、碎碎念。
+
+输出要求：
+- 使用中文 Markdown。
+- 只输出“文风推荐”，不要生成提案版或完整版。
+- 先用 1-2 句话自然说明为什么这样推荐，不要写得像固定模板。
+- 单独保留一行“推荐文风：某某文风”，方便用户快速确认。
+- 给出一张 Markdown 候选表即可，表头可以自然命名，但必须包含“文风/风格”“适用性/匹配度”“说明/理由”这三类信息；根据项目实际给 2-5 个候选文风。
+- 推荐项请写清楚“最佳匹配”或类似表达；其他候选可以写“备选”“可尝试”“不建议”等，不要机械套话。
+- 补充“文案语气建议”，简要说明旁白、字幕、标题和段落收束怎么写。
+- 最后提醒用户可以选择推荐项，也可以继续提出修改意见。
+- 推荐要结合用户已确认的内容逻辑，不要只罗列风格词。
+- 如果用户提出“可爱一点”“更年轻”“更正式”等轻量修改，请直接把候选文风调整成对应方向，不要因为原项目气质而完全否定。
 - 修改意见优先，但如果修改意见会削弱成片效果，请用温和方式给出更合适的推荐。
 """
 
@@ -778,6 +818,15 @@ def stream_logic_recommendation(project: ProjectState) -> StreamingResponse:
         "内容逻辑重新推荐",
     )
 
+
+def stream_style_recommendation(project: ProjectState) -> StreamingResponse:
+    return stream_selection_document(
+        project,
+        build_style_recommendation_prompt(project),
+        "styleRecommendations",
+        "style_recommendation",
+        "文风推荐",
+    )
 
 def stream_creative_preview(project: ProjectState) -> StreamingResponse:
     api_key = os.getenv("LLM_API_KEY") or os.getenv("KIMI_API_KEY")
@@ -862,7 +911,7 @@ def build_proposal_document_prompt(project: ProjectState) -> str:
 项目资料：
 {project_brief(project)}
 
-资料整理与内容逻辑确认：
+已确认的内容逻辑与文风：
 {intake_context(project)}
 
 创作预览与用户确认：
@@ -898,6 +947,7 @@ def build_proposal_document_prompt(project: ProjectState) -> str:
 - 如果参考样片为空，不要编造真实链接，只给参考方向。
 - 如果品牌资产为空，写明“本轮未提供，预留 Logo/VI/素材替换位置”。
 - 语言要有提案感：清晰、专业、能让客户理解为什么这样拍。
+- 全文文案、旁白、字幕和标题命名必须遵循用户已确认的文风；如果用户尚未确认文风，请使用项目风格基调中最稳妥的文案气质。
 - 如果存在最新修改意见，请优先执行修改意见，并在整体文档中自然融合，不要单独解释“我已修改”。
 - 如用户上传了素材，请优先使用“上传素材”中的真实信息；如果素材与表单或最新修改意见冲突，以用户表单和最新修改意见为准。
 """
@@ -910,7 +960,7 @@ def build_full_document_prompt(project: ProjectState) -> str:
 项目资料：
 {project_brief(project)}
 
-资料整理与内容逻辑确认：
+已确认的内容逻辑与文风：
 {intake_context(project)}
 
 提案版内容：
@@ -921,34 +971,111 @@ def build_full_document_prompt(project: ProjectState) -> str:
 
 用户最终选择/补充：
 {project.steps.get("selection").content if project.steps.get("selection") else "用户未额外补充，请沿用创作预览中的主推方案。"}
-
 最新修改意见：
 {revision_context(project)}
 
 输出要求：
 - 使用中文 Markdown。
-- 不要解释你如何生成，直接输出文档正文。
-- 如果已有提案版，请沿用提案版的创意策略、核心表达、旁白、分段和分镜，不要大幅改写；重点补充执行层面的内容。
-- 如果存在最新修改意见，请优先执行修改意见，并在整体文档中自然融合，不要单独解释“我已修改”。
-- 文档必须完整包含以下板块：
-  1. 项目理解
-  2. 已吸收材料（上传的附件解析）
-  3. 成片目标，包含时长，成片比例，风格基调，文案气质
-  4. 创作前提
-  5. 创意主轴，包含核心表达、内容逻辑选择、氛围关键词
-  6. 总旁白
-  7. 段落文案
-  8. 分镜脚本表：1.分镜需要根据段落分成序列 2.对当前序列的成片效果做备注
-  9. 拍摄方式建议：1.按照镜头类型分类描述拍摄方式的选择，并逐个给出选择标准。2.要有符合创意主轴的拍摄注意事项 3.要有镜头执行总表 4.交付分工建议
-  
-
-- 分镜脚本表必须使用 8 列：镜头编号、用途、时长、画面内容、景别/机位/运镜、场景/道具、字幕/旁白、转场。
-- 总时长要贴近用户填写的成片时长。
-- 如果参考样片为空，不要编造真实链接，只给参考方向。
-- 输出要按照真实制片/导演/客户都能直接看的交付文档。
+- 不要解释生成过程，直接输出文档正文。
+- 如果已有提案版，请沿用提案版的创意策略、核心表达、旁白、段落和分镜，不要大幅改写；完整版重点补充执行层面的内容。
+- 如果存在最新修改意见，请优先执行修改意见，并自然融合进全文。
 - 如用户上传了素材，请优先使用“上传素材”中的真实信息；如果素材与表单或最新修改意见冲突，以用户表单和最新修改意见为准。
-"""
+- 如果参考样片为空，不要编造真实链接，只给参考方向。
+- 输出要像真实制片、导演、客户都能直接看的交付文档。
+- 全文文案、旁白、字幕和标题命名必须遵循用户已确认的文风；如果用户尚未确认文风，请使用项目风格基调中最稳妥的文案气质。
 
+文档结构必须保持如下：
+
+# 项目名称 / 片名
+
+## 一、创作前提
+
+### 1. 项目理解
+说明项目背景、目标受众、传播目的和整体表达方向。
+
+### 2. 已吸收材料
+列出已吸收的表单信息、上传文件、参考样片、品牌资料等，并简要说明提炼出的创作信息。
+
+### 3. 成片目标
+包含建议时长、成片比例、风格基调、文案气质、基本镜头原则。
+
+## 二、创意主轴
+
+### 1. 核心表达
+用一段话概括本片最核心的表达。
+
+### 2. 情绪结构
+说明开篇、中段、结尾的情绪递进。
+
+### 3. 氛围关键词
+给出适合本片的氛围关键词。
+
+## 三、总旁白
+
+输出完整总旁白。旁白要有画面感，与项目气质匹配，避免过度空泛或过度口号化。
+
+## 四、段落文案
+
+按产品、场景、业务模块或叙事段落分别输出。每个段落使用三级标题，例如：
+
+### 1. 段落/产品/场景名称
+输出该段落对应文案。
+
+段落数量和名称应根据项目实际内容生成，不要固定套用。
+
+## 五、分镜脚本
+
+分镜需要根据段落拆成若干序列。每个序列必须使用如下结构：
+
+### 序列 A：序列名称
+
+| 镜头编号 | 用途 | 时长 | 画面内容 | 景别/机位/运镜 | 场景/道具 | 字幕/旁白 | 转场 |
+|---|---|---|---|---|---|---|---|
+
+序列后补充：
+
+**序列效果备注：**
+简要说明该序列在成片中的作用、节奏、情绪或转场思路。
+
+分镜要求：
+- 镜头编号要连续。
+- 画面内容尽量具体、可拍、可执行。
+- 总时长要贴近用户填写的成片时长。
+- 分镜后补充“时长合计”，说明素材时长和成片剪辑后的预计时长。
+
+## 六、拍摄与生成方式建议
+
+### 1. 实拍 / 特摄包装 / AI生成 分配
+按序列或镜头类型说明三类方式适合承担的内容，以及大致选择标准。
+
+### 1.1 建议优先使用 AI生成 或混合制作的镜头
+用表格列出适合 AI生成、特摄包装或混合制作的镜头，可包含镜头编号、建议方式、原因、执行建议。
+
+### 1.2 不建议交给 AI 主做的镜头
+列出更适合实拍的镜头或内容类型，并简要说明原因。
+
+### 2. 节奏提醒
+说明开篇、中段、转场、结尾等节奏注意事项。
+
+### 3. 推荐执行比例
+给出实拍、特摄包装、AI生成的大致比例，并说明理由。
+
+### 4. 逐镜头执行方式总表
+按照分镜表的镜头编号逐条输出执行方式。表格建议包含：
+
+| 镜头编号 | 执行方式 | 主要目的 | 原因 | 执行备注 |
+|---|---|---|---|---|
+
+### 5. 交付分工建议
+按导演/摄影组、后期包装组、AI生成组、制片统筹组等拆分工作，可对应序列或镜头编号。
+
+
+整体要求：
+- 保持以上标题和小标题结构，不要随意删减。
+- 内容要专业、清晰、可执行，但不要写得过于死板。
+- 分镜既要有执行细节，也要保留创意发挥空间。
+- 拍摄方式建议要服务成片效果，不要机械分类。
+"""
 
 def stream_proposal_document(project: ProjectState) -> StreamingResponse:
     api_key = os.getenv("LLM_API_KEY") or os.getenv("KIMI_API_KEY")

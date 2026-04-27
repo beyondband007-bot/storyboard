@@ -31,6 +31,7 @@ from .storyboard import (
     stream_intake_summary,
     stream_logic_recommendation,
     stream_proposal_document,
+    stream_style_recommendation,
     write_docx,
     write_html,
     write_markdown,
@@ -169,6 +170,11 @@ def generate_intake_summary_stream(payload: GenerateFullRequest):
 @app.post("/api/generate/logic-recommendation/stream")
 def generate_logic_recommendation_stream(payload: GenerateFullRequest):
     return stream_logic_recommendation(payload.project)
+
+
+@app.post("/api/generate/style-recommendation/stream")
+def generate_style_recommendation_stream(payload: GenerateFullRequest):
+    return stream_style_recommendation(payload.project)
 
 
 @app.post("/api/generate/preview", response_model=PreviewResponse)

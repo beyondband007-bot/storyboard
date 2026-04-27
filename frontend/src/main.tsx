@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import {
+  ArrowRight,
   FolderPlus,
   Loader2,
   MessageSquareText,
@@ -41,6 +42,10 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+  meta?: {
+    kind?: "intake_restart";
+    runId?: string;
+  };
 };
 
 type StepResult = {
@@ -118,7 +123,16 @@ type LogicHistoryItem = {
   title: string;
   markdown: string;
   created_at: string;
+  runId?: string;
 };
+
+type IntakeHistoryItem = LogicHistoryItem;
+
+type TimelineItem =
+  | { type: "message"; message: ChatMessage; key: string }
+  | { type: "status"; text: string; key: string }
+  | { type: "intake"; title?: string; markdown: string; key: string; busy?: boolean }
+  | { type: "logic"; item: LogicHistoryItem; key: string };
 
 type LogicOption = {
   type: string;
@@ -129,6 +143,7 @@ type LogicOption = {
 const nowIso = () => new Date().toISOString().slice(0, 19);
 const optionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const genericLogicTitles = new Set(["内容逻辑推荐", "动态内容逻辑推荐", "内容逻辑", "逻辑推荐", "叙事逻辑推荐"]);
+const genericStyleTitles = new Set(["文风推荐", "推荐文风", "文风确认", "文案风格推荐", "文案风格"]);
 const processingRank: Record<ProjectAsset["status"], number> = {
   uploaded: 0,
   processing: 1,
@@ -176,10 +191,10 @@ const fieldPresets: Record<keyof Pick<ProjectMeta, "client_type" | "video_type" 
 };
 
 const assetConfigs: Array<{ type: AssetType; title: string; hint: string; accept: string; optional?: boolean }> = [
-  { type: "company_intro", title: "公司介绍", hint: "PDF / Word / 图片", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp" },
-  { type: "reference", title: "视频参考素材", hint: "视频 / PDF / 图片", accept: ".mp4,.mov,.webm,.m4v,.pdf,.png,.jpg,.jpeg,.webp" },
+  { type: "company_intro", title: "拍摄需求", hint: "PDF / Word / 图片", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp" },
+  { type: "reference", title: "拍摄必要元素", hint: "视频 / PDF / 图片", accept: ".mp4,.mov,.webm,.m4v,.pdf,.png,.jpg,.jpeg,.webp" },
   { type: "content_unit", title: "内容单元素材", hint: "产品、场景、业务资料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.m4v" },
-  { type: "brand", title: "品牌资产（可选）", hint: "Logo / VI / 旧物料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp", optional: true }
+  { type: "brand", title: "公司资料", hint: "Logo / VI / 旧物料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp", optional: true }
 ];
 
 async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
@@ -334,7 +349,284 @@ function withAppendedLogicHistory(project: ProjectState, item: LogicHistoryItem)
   };
 }
 
+function parseIntakeHistory(project?: ProjectState | null): IntakeHistoryItem[] {
+  const raw = project?.selection_state.intakeSummaryHistory;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as IntakeHistoryItem[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.id === "string" && typeof item.markdown === "string");
+  } catch {
+    return [];
+  }
+}
+
+function withAppendedIntakeHistory(project: ProjectState, item: IntakeHistoryItem): ProjectState {
+  const history = parseIntakeHistory(project);
+  return {
+    ...project,
+    selection_state: {
+      ...project.selection_state,
+      intakeSummaryHistory: JSON.stringify([...history, item])
+    },
+    updated_at: nowIso()
+  };
+}
+
+function withArchivedLiveIntake(project: ProjectState): ProjectState {
+  const markdown = (project.selection_state.intakeSummary || project.selection_state.logicRecommendations || "").trim();
+  if (!markdown) return project;
+  const history = parseIntakeHistory(project);
+  if (history.some((item) => item.markdown.trim() === markdown)) return project;
+  return withAppendedIntakeHistory(project, {
+    id: `intake-archived-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title: "上一次资料整理与内容逻辑推荐",
+    markdown,
+    created_at: nowIso()
+  });
+}
+
+function extractStyleOptions(markdown: string): LogicOption[] {
+  const options = new Map<string, LogicOption>();
+  const addStructuredOption = (type: string, fit = "", description = "") => {
+    const normalized = type
+      .replace(/\*\*/g, "")
+      .replace(/^[✅✔•\-*\dA-ZＡ-Ｚ]+[.、\s]*/i, "")
+      .replace(/^推荐文风[：:]\s*/, "")
+      .trim();
+    if (!normalized || genericStyleTitles.has(normalized) || /文风类型|文案风格|---/.test(normalized)) return;
+    options.set(normalized, {
+      type: normalized,
+      fit: fit.replace(/\*\*/g, "").trim(),
+      description: description.replace(/\*\*/g, "").trim()
+    });
+  };
+  const lines = (markdown || "").split(/\r?\n/);
+  let inStyleSection = false;
+  let inStyleTable = false;
+  let tableIndexes: { type: number; fit: number; description: number[] } | null = null;
+  for (const line of lines) {
+    const recommended = line.match(/推荐文风[：:]\s*([^\n，。；;|]+)/);
+    if (recommended?.[1]) {
+      addStructuredOption(recommended[1], "最佳匹配", "系统推荐");
+      continue;
+    }
+
+    if (/^\s*#{1,6}\s*.*(文风|文案风格).*推荐/.test(line) || /Phase\s*3[：:\s、-]*(文风|文案风格)/i.test(line)) {
+      inStyleSection = true;
+      inStyleTable = false;
+      tableIndexes = null;
+      continue;
+    }
+    if (inStyleSection && /^\s*#{1,6}\s*/.test(line) && !/(文风|文案风格).*推荐/.test(line)) {
+      inStyleSection = false;
+      inStyleTable = false;
+      tableIndexes = null;
+      continue;
+    }
+
+    const cells = line.split("|").map((cell) => cell.trim()).filter(Boolean);
+    const mightBeStyleTable = cells.length >= 2 && cells.some((cell) => /文风|文案风格|风格|类型/.test(cell));
+    if ((inStyleSection || mightBeStyleTable) && cells.length >= 2 && /文风|文案风格|风格|类型/.test(cells.join(" "))) {
+      inStyleTable = true;
+      inStyleSection = true;
+      const typeIndex = cells.findIndex((cell) => /文风|文案风格|风格|类型/.test(cell));
+      const fitIndex = cells.findIndex((cell) => /适用|匹配|推荐|定位/.test(cell));
+      const descriptionIndexes = cells.map((_, index) => index).filter((index) => index !== typeIndex && index !== fitIndex);
+      tableIndexes = {
+        type: Math.max(typeIndex, 0),
+        fit: fitIndex >= 0 ? fitIndex : 1,
+        description: descriptionIndexes.length ? descriptionIndexes : [1]
+      };
+      continue;
+    }
+    if (inStyleTable && /^\s*\|?\s*:?-{3,}/.test(line)) continue;
+    if (inStyleTable && tableIndexes && cells.length >= 2) {
+      addStructuredOption(
+        cells[tableIndexes.type] || cells[0],
+        cells[tableIndexes.fit] || "",
+        tableIndexes.description.map((index) => cells[index]).filter(Boolean).join("｜")
+      );
+      continue;
+    }
+    if (inStyleTable && line.trim() && !line.includes("|")) break;
+
+    if (inStyleSection) {
+      const listMatch = line.match(/^\s*(?:[-*]|\d+[.、]|[A-ZＡ-Ｚ][.、])\s*(?:\*\*)?([^：:：\-|（(]{2,18}(?:文风|风|感|调|式)?)(?:\*\*)?[：:：\-（(]?\s*(.*)$/i);
+      if (listMatch?.[1] && /(风|感|调|式|简洁|温柔|可爱|活泼|正式|严谨|治愈|诗意|写实|留白|烟火|热血|轻快)/.test(listMatch[1])) {
+        addStructuredOption(listMatch[1], "", listMatch[2] || "");
+      }
+    }
+  }
+  return Array.from(options.values());
+}
+
+function appendConversationMessages(
+  project: ProjectState,
+  content: string,
+  assistantReply: string,
+  meta?: ChatMessage["meta"]
+): ProjectState {
+  return {
+    ...project,
+    messages: [
+      ...(project.messages || []),
+      { role: "user", content, meta },
+      { role: "assistant", content: assistantReply, meta }
+    ],
+    updated_at: nowIso()
+  };
+}
+
+function buildConversationTimeline(
+  messages: ChatMessage[],
+  logicHistory: LogicHistoryItem[],
+  intakeHistory: IntakeHistoryItem[],
+  intakeMarkdown: string,
+  statusText: string,
+  activeIntakeRunId = ""
+): TimelineItem[] {
+  const timeline: TimelineItem[] = [];
+  let historyIndex = 0;
+  let liveIntakeInserted = false;
+  let legacyIntakeInserted = false;
+  const intakeByRunId = new Map(intakeHistory.filter((item) => item.runId).map((item) => [item.runId, item]));
+  const anchoredRunIds = new Set<string>();
+  const legacyIntakeHistory = intakeHistory.filter((item) => !item.runId);
+  const appendIntakeHistory = (item: IntakeHistoryItem) => {
+    timeline.push({
+      type: "intake",
+      title: item.title,
+      markdown: item.markdown,
+      key: `intake-${item.id}`
+    });
+  };
+  const appendLiveIntake = (runId = activeIntakeRunId) => {
+    if (intakeMarkdown.trim()) {
+      timeline.push({
+        type: "intake",
+        title: runId ? "重新整理资料与内容逻辑推荐" : "资料整理与内容逻辑推荐",
+        markdown: intakeMarkdown,
+        key: runId ? `intake-live-${runId}` : "intake-live",
+        busy: Boolean(statusText)
+      });
+    } else if (statusText) {
+      timeline.push({ type: "status", text: statusText, key: runId ? `status-intake-${runId}` : "status-intake" });
+    }
+    liveIntakeInserted = true;
+  };
+  const appendLegacyIntakeHistory = () => {
+    if (legacyIntakeInserted) return;
+    legacyIntakeHistory.forEach(appendIntakeHistory);
+    legacyIntakeInserted = true;
+  };
+
+  messages.forEach((message, index) => {
+    if (!legacyIntakeInserted && message.role === "user" && message.meta?.kind === "intake_restart") {
+      appendLegacyIntakeHistory();
+    }
+    timeline.push({ type: "message", message, key: `message-${index}` });
+    if (message.role === "assistant") {
+      const restartRunId = message.meta?.kind === "intake_restart"
+        ? message.meta.runId
+        : "";
+      if (restartRunId) {
+        anchoredRunIds.add(restartRunId);
+        const historyItem = intakeByRunId.get(restartRunId);
+        if (historyItem) {
+          appendIntakeHistory(historyItem);
+        } else if (activeIntakeRunId === restartRunId && statusText) {
+          appendLiveIntake(restartRunId);
+        }
+      }
+      if (message.content.includes("重新推荐内容逻辑") && logicHistory[historyIndex]) {
+        const item = logicHistory[historyIndex];
+        timeline.push({ type: "logic", item, key: `logic-${item.id}` });
+        historyIndex += 1;
+      }
+    }
+  });
+
+  if (statusText && !liveIntakeInserted) {
+    appendLiveIntake();
+  }
+
+  appendLegacyIntakeHistory();
+
+  intakeHistory.forEach((item) => {
+    if (item.runId && !anchoredRunIds.has(item.runId)) appendIntakeHistory(item);
+  });
+
+  logicHistory.slice(historyIndex).forEach((item) => {
+    timeline.push({ type: "logic", item, key: `logic-${item.id}` });
+  });
+
+  return timeline;
+}
+
+function ConfirmModal({
+  project,
+  onConfirm,
+  onCancel
+}: {
+  project: ProjectSummary;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="confirm-modal-overlay" onClick={onCancel}>
+      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <h3 className="confirm-modal-title">确认删除么？</h3>
+        <p className="confirm-modal-message">
+          这会删除「<strong>{project.project_name || "未命名项目"}</strong>」的历史记录和记忆。
+        </p>
+        <div className="confirm-modal-actions">
+          <button className="confirm-modal-cancel" type="button" onClick={onCancel}>
+            取消
+          </button>
+          <button className="confirm-modal-delete" type="button" onClick={onConfirm}>
+            删除
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OpeningPage({ onEnter }: { onEnter: () => void }) {
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleEnter = () => {
+    setIsExiting(true);
+    setTimeout(onEnter, 600);
+  };
+
+  return (
+    <div className={`opening-page ${isExiting ? "fade-out" : ""}`}>
+      <div className="opening-film-bars top" />
+      <div className="opening-film-bars bottom" />
+      <div className="opening-grain" />
+      <div className="opening-corner tl" />
+      <div className="opening-corner tr" />
+      <div className="opening-corner bl" />
+      <div className="opening-corner br" />
+      <div className="opening-content">
+        <span className="opening-label">AI Video Production</span>
+        <h1 className="opening-title">AI <strong>导演</strong>工作台</h1>
+        <p className="opening-subtitle">智能分镜生成 · 宣传片创作助手</p>
+        <div className="opening-divider" />
+        <button className="opening-enter-btn" type="button" onClick={handleEnter}>
+          <span>进入工作台</span>
+          <ArrowRight size={16} />
+        </button>
+      </div>
+      <span className="opening-version">v1.0</span>
+    </div>
+  );
+}
+
 function App() {
+  const [showOpening, setShowOpening] = useState(true);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -351,6 +643,8 @@ function App() {
   const [pendingUploads, setPendingUploads] = useState<ProjectAsset[]>([]);
   const [documentTasks, setDocumentTasks] = useState<Record<string, DocumentTask>>({});
   const [logicTasks, setLogicTasks] = useState<Record<string, LogicTask>>({});
+  const [styleTasks, setStyleTasks] = useState<Record<string, LogicTask>>({});
+  const [deleteConfirmProject, setDeleteConfirmProject] = useState<ProjectSummary | null>(null);
   const conversationEndRef = useRef<HTMLDivElement | null>(null);
   const saveTimer = useRef<number | null>(null);
   const savedSignature = useRef("");
@@ -358,12 +652,15 @@ function App() {
 
   const logicMarkdown = activeProject?.selection_state.logicRecommendations || activeProject?.selection_state.intakeSummary || "";
   const logicOptions = useMemo(() => extractLogicOptions(logicMarkdown), [logicMarkdown]);
+  const styleMarkdown = activeProject?.selection_state.styleRecommendations || "";
+  const styleOptions = useMemo(() => extractStyleOptions(styleMarkdown), [styleMarkdown]);
   const logicHistory = useMemo(() => parseLogicHistory(activeProject), [activeProject?.selection_state.logicRecommendationHistory]);
+  const intakeHistory = useMemo(() => parseIntakeHistory(activeProject), [activeProject?.selection_state.intakeSummaryHistory]);
   const selectedLogic = activeProject?.selection_state.selectedLogic || "";
+  const selectedWritingStyle = activeProject?.selection_state.selectedWritingStyle || "";
   const activeDocumentTask = activeProject ? documentTasks[activeProject.id] : undefined;
   const activeLogicTask = activeProject ? logicTasks[activeProject.id] : undefined;
-  const latestLogicHistory = !activeLogicTask && logicHistory.length ? logicHistory[logicHistory.length - 1] : undefined;
-  const logicHistoryBeforeMessages = activeLogicTask ? logicHistory : logicHistory.slice(0, -1);
+  const activeStyleTask = activeProject ? styleTasks[activeProject.id] : undefined;
   const activeBusy = Boolean(busy && activeProject?.id && busyProjectId === activeProject.id);
   const isGeneratingDocument = Boolean(activeDocumentTask);
   const activeDocumentMarkdown = activeProject
@@ -374,10 +671,25 @@ function App() {
   const assistantBusy = activeBusy && !isGeneratingDocument && (
     busy === "正在整理资料并推荐内容逻辑"
     || (busy === "正在重新推荐内容逻辑" && !activeLogicTask)
+    || (busy === "正在推荐文风" && !activeStyleTask)
+    || (busy === "正在重新推荐文风" && !activeStyleTask)
+  );
+  const conversationTimeline = useMemo(
+    () => buildConversationTimeline(
+      activeProject?.messages || [],
+      logicHistory,
+      intakeHistory,
+      activeProject?.selection_state.intakeSummary || "",
+      assistantBusy ? busy : "",
+      activeProject?.selection_state.activeIntakeRunId || ""
+    ),
+    [activeProject?.messages, logicHistory, intakeHistory, activeProject?.selection_state.intakeSummary, activeProject?.selection_state.activeIntakeRunId, assistantBusy, busy]
   );
   const logicInputActive = Boolean(logicMarkdown && !selectedLogic);
-  const generateInputActive = Boolean(selectedLogic && !activeProject?.full_markdown && !isGeneratingDocument);
+  const styleInputActive = Boolean(selectedLogic && !selectedWritingStyle && !activeProject?.full_markdown && !isGeneratingDocument && !activeStyleTask);
+  const generateInputActive = Boolean(selectedLogic && selectedWritingStyle && !activeProject?.full_markdown && !isGeneratingDocument);
   const logicChoiceText = logicOptions.length ? optionLetters.slice(0, logicOptions.length).join("/") : "修改意见";
+  const styleChoiceText = styleOptions.length ? optionLetters.slice(0, styleOptions.length).join("/") : "修改意见";
   const generationChoices = activeProject?.proposal_markdown
     ? ["A. 先生成提案版", "B. 直接生成完整版", "C. 由提案版生成完整版"]
     : ["A. 先生成提案版", "B. 直接生成完整版"];
@@ -388,16 +700,28 @@ function App() {
       : "没有解析到可选方案，请直接输入修改意见。"
     : generateInputActive
       ? `输入 ${activeProject?.proposal_markdown ? "A/B/C" : "A/B"} 选择生成方式。`
-      : hasGeneratedDocument
-        ? "输入补充意见后会自动重新生成当前版本，例如：整体 AI 元素再浓一些。"
-        : "输入补充想法或修改意见，例如：希望整体更像政府汇报，不要太广告化。";
+      : styleInputActive
+        ? styleOptions.length
+          ? `输入 ${styleChoiceText} 确认文风，或直接输入修改意见。`
+          : "没有解析到可选文风，请直接输入修改意见。"
+        : hasGeneratedDocument
+          ? "输入补充意见后会自动重新生成当前版本，例如：整体 AI 元素再浓一些。"
+          : "输入补充想法或修改意见，例如：希望整体更像政府汇报，不要太广告化。";
   const canStart = Boolean(
     activeProject?.meta.project_name.trim()
     && activeProject.meta.client_type.trim()
     && activeProject.meta.video_type.trim()
     && activeProject.meta.duration.trim()
-    && activeProject.meta.style.trim()
     && activeProject.meta.aspect_ratio.trim()
+  );
+
+  const isEmptyState = activeProject && (
+    !activeBusy
+    && !activeProject.selection_state.intakeSummary
+    && !activeProject.messages?.length
+    && !activeProject.selection_state.logicRecommendations
+    && !activeProject.proposal_markdown
+    && !activeProject.full_markdown
   );
 
   useEffect(() => {
@@ -406,7 +730,7 @@ function App() {
 
   useEffect(() => {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [draftMarkdown, documentTasks, logicTasks, busy, activeProject?.messages?.length, activeProject?.selection_state.intakeSummary, activeProject?.selection_state.logicRecommendations, activeProject?.selection_state.logicRecommendationHistory]);
+  }, [draftMarkdown, documentTasks, logicTasks, styleTasks, busy, activeProject?.messages?.length, activeProject?.selection_state.intakeSummary, activeProject?.selection_state.intakeSummaryHistory, activeProject?.selection_state.logicRecommendations, activeProject?.selection_state.logicRecommendationHistory, activeProject?.selection_state.styleRecommendations]);
 
   useEffect(() => {
     if (!activeProject?.id || !activeProject.assets.some((asset) => asset.status === "processing")) return;
@@ -495,10 +819,11 @@ function App() {
     await loadProjects(project.id);
   }
 
-  async function deleteProject(id: string) {
-    if (!window.confirm("确定删除这个项目吗？")) return;
-    await apiRequest(`/api/projects/${id}`, { method: "DELETE" });
-    if (activeProject?.id === id) setActiveProject(null);
+  async function confirmDeleteProject() {
+    if (!deleteConfirmProject) return;
+    await apiRequest(`/api/projects/${deleteConfirmProject.id}`, { method: "DELETE" });
+    if (activeProject?.id === deleteConfirmProject.id) setActiveProject(null);
+    setDeleteConfirmProject(null);
     await loadProjects();
   }
 
@@ -599,14 +924,51 @@ function App() {
     setActiveProject(normalizeProject(project));
   }
 
-  async function startIntakeSummary() {
-    if (!activeProject || !canStart) return;
+  async function startIntakeSummary(projectOverride?: ProjectState) {
+    const sourceProject = projectOverride || activeProject;
+    if (!sourceProject || !canStart) return;
+    const shouldAppendRestartMessage = Boolean(
+      sourceProject.selection_state.intakeSummary
+      || sourceProject.selection_state.logicRecommendations
+      || sourceProject.selection_state.selectedLogic
+      || sourceProject.selection_state.styleRecommendations
+      || sourceProject.proposal_markdown
+      || sourceProject.full_markdown
+      || sourceProject.final_markdown
+    );
     setBusy("正在整理资料并推荐内容逻辑");
-    setBusyProjectId(activeProject.id);
+    setBusyProjectId(sourceProject.id);
     setError("");
     patchSelection("selectedLogic", "");
     try {
-      const saved = await saveProject({ ...activeProject, selection_state: { ...activeProject.selection_state, selectedLogic: "" } });
+      const intakeRunId = `intake-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const baseProject = shouldAppendRestartMessage ? withArchivedLiveIntake(sourceProject) : sourceProject;
+      const restartProject = shouldAppendRestartMessage
+        ? appendConversationMessages(
+          baseProject,
+          "重新整理资料",
+          "已收到新的项目材料，我会基于最新资料重新整理资料并推荐内容逻辑。",
+          { kind: "intake_restart", runId: intakeRunId }
+        )
+        : baseProject;
+      const saved = await saveProject({
+        ...restartProject,
+        selection_state: {
+          ...restartProject.selection_state,
+          activeIntakeRunId: intakeRunId,
+          intakeSummary: "",
+          logicRecommendations: "",
+          selectedLogic: "",
+          styleRecommendations: "",
+          selectedWritingStyle: "",
+          logicRevisionNote: "",
+          styleRevisionNote: "",
+          generationMode: ""
+        },
+        proposal_markdown: "",
+        full_markdown: "",
+        final_markdown: ""
+      });
       setBusyProjectId(saved.id);
       let content = "";
       const finalProject = await streamProject("/api/generate/intake-summary/stream", saved, (delta) => {
@@ -616,7 +978,19 @@ function App() {
           selection_state: { ...project.selection_state, intakeSummary: content, logicRecommendations: content }
         } : project);
       });
-      setActiveProject((project) => project?.id === saved.id ? normalizeProject(finalProject) : project);
+      const historyItem: IntakeHistoryItem = {
+        id: intakeRunId,
+        title: shouldAppendRestartMessage ? "重新整理资料与内容逻辑推荐" : "资料整理与内容逻辑推荐",
+        markdown: content,
+        created_at: nowIso(),
+        runId: intakeRunId
+      };
+      const finalWithHistory = withAppendedIntakeHistory(normalizeProject({
+        ...finalProject,
+        selection_state: { ...finalProject.selection_state, activeIntakeRunId: "" }
+      }), historyItem);
+      setActiveProject((project) => project?.id === saved.id ? finalWithHistory : project);
+      await saveProject(finalWithHistory, false, false);
       const list = await apiRequest<ProjectSummary[]>("/api/projects");
       setProjects(list);
     } catch (err) {
@@ -625,6 +999,21 @@ function App() {
       setBusy("");
       setBusyProjectId("");
     }
+  }
+
+  async function startIntakeFromOpeningInput() {
+    if (!activeProject || !canStart) return;
+    const content = chatInput.trim();
+    if (!content) {
+      await startIntakeSummary();
+      return;
+    }
+
+    setChatInput("");
+    const nextProject = await saveRevisionMessage(content, "已收到，我会把这条补充意见作为后续资料整理、逻辑推荐或生成文档时的参考。");
+    if (!nextProject) return;
+    setActiveProject(nextProject);
+    await startIntakeSummary(nextProject);
   }
 
   async function rerunLogicRecommendation(revisionNote = logicRevision, projectOverride?: ProjectState) {
@@ -639,7 +1028,9 @@ function App() {
         selection_state: {
           ...sourceProject.selection_state,
           logicRevisionNote: revisionNote,
-          selectedLogic: ""
+          selectedLogic: "",
+          styleRecommendations: "",
+          selectedWritingStyle: ""
         }
       });
       setBusyProjectId(saved.id);
@@ -652,7 +1043,12 @@ function App() {
       }));
       setActiveProject((project) => project?.id === saved.id ? {
         ...project,
-        selection_state: { ...project.selection_state, selectedLogic: "" }
+        selection_state: {
+          ...project.selection_state,
+          selectedLogic: "",
+          styleRecommendations: "",
+          selectedWritingStyle: ""
+        }
       } : project);
       const finalProject = await streamProject("/api/generate/logic-recommendation/stream", saved, (delta) => {
         content += delta;
@@ -672,7 +1068,9 @@ function App() {
         selection_state: {
           ...finalProject.selection_state,
           logicRecommendations: content,
-          selectedLogic: ""
+          selectedLogic: "",
+          styleRecommendations: "",
+          selectedWritingStyle: ""
         }
       });
       const finalWithHistory = withAppendedLogicHistory(normalizedFinal, historyItem);
@@ -697,19 +1095,105 @@ function App() {
     }
   }
 
-  async function confirmLogic(value: string) {
+  async function confirmLogic(value: string, userInput?: string) {
     if (!activeProject || !value.trim()) return;
-    const project = await saveProject({
+    const confirmedProject: ProjectState = {
       ...activeProject,
-      selection_state: { ...activeProject.selection_state, selectedLogic: value.trim() }
-    });
+      selection_state: {
+        ...activeProject.selection_state,
+        selectedLogic: value.trim(),
+        styleRecommendations: "",
+        selectedWritingStyle: ""
+      }
+    };
+    const project = await saveProject(userInput
+      ? appendConversationMessages(confirmedProject, userInput, `已确认内容逻辑：${value.trim()}。接下来我会根据这个逻辑推荐文风。`)
+      : confirmedProject
+    );
+    setActiveProject(project);
+    await rerunStyleRecommendation("", project);
+  }
+
+  async function rerunStyleRecommendation(revisionNote = "", projectOverride?: ProjectState) {
+    const sourceProject = projectOverride || activeProject;
+    if (!sourceProject?.selection_state.selectedLogic) return;
+    setBusy(revisionNote ? "正在重新推荐文风" : "正在推荐文风");
+    setBusyProjectId(sourceProject.id);
+    setError("");
+    try {
+      const saved = await saveProject({
+        ...sourceProject,
+        selection_state: {
+          ...sourceProject.selection_state,
+          styleRevisionNote: revisionNote,
+          selectedWritingStyle: ""
+        }
+      });
+      setBusyProjectId(saved.id);
+      let content = "";
+      const taskId = `style-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const taskTitle = revisionNote ? "正在重新推荐文风" : "正在推荐文风";
+      setStyleTasks((current) => ({
+        ...current,
+        [saved.id]: { id: taskId, title: taskTitle, message: taskTitle, markdown: "" }
+      }));
+      setActiveProject((project) => project?.id === saved.id ? {
+        ...project,
+        selection_state: { ...project.selection_state, selectedWritingStyle: "" }
+      } : project);
+      const finalProject = await streamProject("/api/generate/style-recommendation/stream", saved, (delta) => {
+        content += delta;
+        setStyleTasks((current) => ({
+          ...current,
+          [saved.id]: { id: taskId, title: taskTitle, message: taskTitle, markdown: content }
+        }));
+      });
+      const normalizedFinal = normalizeProject({
+        ...finalProject,
+        selection_state: {
+          ...finalProject.selection_state,
+          styleRecommendations: content,
+          selectedWritingStyle: ""
+        }
+      });
+      setActiveProject((project) => project?.id === saved.id ? normalizedFinal : project);
+      await saveProject(normalizedFinal, false, false);
+      setStyleTasks((current) => {
+        const next = { ...current };
+        delete next[saved.id];
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "文风推荐失败");
+      setStyleTasks((current) => {
+        const next = { ...current };
+        if (sourceProject.id) delete next[sourceProject.id];
+        return next;
+      });
+    } finally {
+      setBusy("");
+      setBusyProjectId("");
+    }
+  }
+
+  async function confirmWritingStyle(value: string, userInput?: string) {
+    if (!activeProject || !value.trim()) return;
+    const confirmedProject: ProjectState = {
+      ...activeProject,
+      selection_state: { ...activeProject.selection_state, selectedWritingStyle: value.trim() }
+    };
+    const project = await saveProject(userInput
+      ? appendConversationMessages(confirmedProject, userInput, `已确认文风：${value.trim()}。请选择生成提案版或完整版。`)
+      : confirmedProject
+    );
     setActiveProject(project);
   }
 
   async function generateDocument(mode: GenerationMode, projectOverride?: ProjectState) {
     const sourceProject = projectOverride || activeProject;
     const sourceSelectedLogic = sourceProject?.selection_state.selectedLogic || selectedLogic;
-    if (!sourceProject || !sourceSelectedLogic) return;
+    const sourceSelectedWritingStyle = sourceProject?.selection_state.selectedWritingStyle || selectedWritingStyle;
+    if (!sourceProject || !sourceSelectedLogic || !sourceSelectedWritingStyle) return;
     const isProposal = mode === "proposal_first";
     setBusy(isProposal ? "正在生成提案版" : "正在生成完整版");
     setBusyProjectId(sourceProject.id);
@@ -780,6 +1264,29 @@ function App() {
     await generateDocument("full_direct");
   }
 
+  async function chooseGenerationPath(choice: string, userInput = choice) {
+    if (!activeProject) return;
+    if (choice === "A") {
+      const nextProject = await saveProject(appendConversationMessages(activeProject, userInput, "已确认，我会先生成提案版。"));
+      setActiveProject(nextProject);
+      await generateDocument("proposal_first", nextProject);
+      return;
+    }
+    if (choice === "B") {
+      const nextProject = await saveProject(appendConversationMessages(activeProject, userInput, "已确认，我会直接生成完整版。"));
+      setActiveProject(nextProject);
+      await generateDocument("full_direct", nextProject);
+      return;
+    }
+    if (choice === "C" && activeProject.proposal_markdown) {
+      const nextProject = await saveProject(appendConversationMessages(activeProject, userInput, "已确认，我会由提案版生成完整版。"));
+      setActiveProject(nextProject);
+      await generateDocument("full_direct", nextProject);
+      return;
+    }
+    setError(`请输入 ${activeProject.proposal_markdown ? "A、B 或 C" : "A 或 B"} 选择生成方式。`);
+  }
+
   async function exportDocument(version: ExportVersion, kind: "html" | "docx") {
     if (!activeProject) return;
     setBusy(`正在导出 ${kind.toUpperCase()}`);
@@ -808,12 +1315,7 @@ function App() {
       ? `${activeProject.steps.revision.content}\n\n${content}`
       : content;
     return saveProject({
-      ...activeProject,
-      messages: [
-        ...(activeProject.messages || []),
-        { role: "user", content },
-        { role: "assistant", content: assistantReply }
-      ],
+      ...appendConversationMessages(activeProject, content, assistantReply),
       steps: {
         ...activeProject.steps,
         revision: {
@@ -841,7 +1343,7 @@ function App() {
           setError(`当前没有 ${normalizedChoice} 选项，请输入可见选项字母或直接写修改意见。`);
           return;
         }
-        await confirmLogic(selectedOption);
+        await confirmLogic(selectedOption, content);
         return;
       }
       setLogicRevision(content);
@@ -851,20 +1353,25 @@ function App() {
       return;
     }
 
+    if (styleInputActive) {
+      const choiceIndex = optionLetters.indexOf(normalizedChoice);
+      if (choiceIndex >= 0) {
+        const selectedOption = styleOptions[choiceIndex]?.type || "";
+        if (!selectedOption) {
+          setError(`当前没有 ${normalizedChoice} 选项，请输入可见选项字母或直接写修改意见。`);
+          return;
+        }
+        await confirmWritingStyle(selectedOption, content);
+        return;
+      }
+      const nextProject = await saveRevisionMessage(content, "已收到，我会按这条修改意见重新推荐文风。");
+      if (!nextProject) return;
+      await rerunStyleRecommendation(content, nextProject);
+      return;
+    }
+
     if (generateInputActive) {
-      if (normalizedChoice === "A") {
-        await generateDocument("proposal_first");
-        return;
-      }
-      if (normalizedChoice === "B") {
-        await generateDocument("full_direct");
-        return;
-      }
-      if (normalizedChoice === "C" && activeProject.proposal_markdown) {
-        await generateFullAfterProposal();
-        return;
-      }
-      setError(`请输入 ${activeProject.proposal_markdown ? "A、B 或 C" : "A 或 B"} 选择生成方式。`);
+      await chooseGenerationPath(normalizedChoice, content);
       return;
     }
 
@@ -879,11 +1386,16 @@ function App() {
     if (nextProject) setActiveProject(nextProject);
   }
 
-  return (
+  if (showOpening) {
+    return <OpeningPage onEnter={() => setShowOpening(false)} />;
+  }
+
+    return (
     <div className="director-app">
       <aside className={`project-sidebar ${leftOpen ? "open" : ""}`}>
-        <div className="brand-row">
-          <strong>AI导演工作台</strong>
+        <img src="/logo.png" alt="" className="brand-logo" />
+        <div className="sidebar-header">
+          <div className="sidebar-title">AI导演工作台</div>
           <button className="icon-btn mobile-only" type="button" onClick={() => setLeftOpen(false)} aria-label="关闭项目栏">
             <X size={18} />
           </button>
@@ -900,7 +1412,7 @@ function App() {
                 <strong>{project.project_name || "未命名项目"}</strong>
                 <span>{project.video_type || "影片"} · {formatTime(project.updated_at)}</span>
               </button>
-              <button className="delete-history" type="button" onClick={() => deleteProject(project.id)} aria-label="删除项目">
+              <button className="delete-history" type="button" onClick={() => setDeleteConfirmProject(project)} aria-label="删除项目">
                 <Trash2 size={15} />
               </button>
             </article>
@@ -927,44 +1439,68 @@ function App() {
           <div className="conversation-column">
           {loading && <div className="center-note">正在加载项目...</div>}
           {!loading && !activeProject && (
-            <div className="welcome-card">
-              <p>先新建项目，然后在右侧填资料、上传素材。我会先汇总信息，再推荐内容逻辑。</p>
-              <button className="primary" type="button" onClick={createProject}>新建项目</button>
+            <div className="welcome-empty">
+              <div className="welcome-empty-content">
+                <h2>AI 导演工作台</h2>
+                <p>智能分镜生成 · 宣传片创作助手</p>
+                <button className="primary start-new-btn" type="button" onClick={createProject}>
+                  开始创作
+                </button>
+              </div>
             </div>
           )}
-          {activeProject && (
-            <>
-              <div className="assistant-message">
-                <span>AI导演</span>
-                <p>
-                  {assistantBusy && <Loader2 size={16} className="spin inline-spin" />}
-                  {assistantBusy ? busy : "右侧填写基础信息和素材后，点击“开始整理资料”。系统会一次性返回项目信息汇总、内容单元概览和动态内容逻辑推荐。"}
-                </p>
+          {!loading && activeProject && isEmptyState && (
+            <div className="chat-empty-state">
+              <div className="chat-empty-header">
+                <h2>{activeProject.meta.project_name || "新项目"}</h2>
+                <p>填写右侧项目信息，开始创作你的分镜脚本</p>
               </div>
-
-              {activeProject.selection_state.intakeSummary && (
-                <MarkdownBlock title="资料整理与内容逻辑推荐" markdown={activeProject.selection_state.intakeSummary} />
-              )}
-
-              {logicHistoryBeforeMessages.map((item, index) => (
-                <MarkdownBlock
-                  key={item.id}
-                  title={`${item.title || "重新推荐内容逻辑"} ${index + 1}`}
-                  markdown={item.markdown}
+              <div className="chat-suggestions">
+                <button className="suggestion-btn" type="button" onClick={() => {
+                  if (canStart) startIntakeFromOpeningInput();
+                }} disabled={!canStart || Boolean(busy)}>
+                  <MessageSquareText size={18} />
+                  <span>整理资料并推荐内容逻辑</span>
+                </button>
+              </div>
+              <div className="chat-empty-input">
+                <textarea
+                  value={chatInput}
+                  disabled={Boolean(busy)}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!busy && chatInput.trim()) sendChatMessage();
+                    }
+                  }}
+                  placeholder={canStart ? "输入补充想法或直接点击上方按钮开始..." : "请先在右侧填写项目基础信息..."}
+                  rows={1}
                 />
-              ))}
+                <button className="primary" type="button" onClick={sendChatMessage} disabled={Boolean(busy) || !chatInput.trim()}>
+                  <Send size={18} />
+                </button>
+              </div>
+              {!canStart && <p className="empty-hint">请先填写项目名称、客户类型、影片类型、时长、成片比例</p>}
+            </div>
+          )}
+          {!loading && activeProject && !isEmptyState && (
+            <>
+              <ConversationTimeline items={conversationTimeline} />
 
-              <MessageList messages={activeProject.messages || []} />
-
-              {latestLogicHistory && (
-                <MarkdownBlock
-                  title={latestLogicHistory.title || "重新推荐内容逻辑"}
-                  markdown={latestLogicHistory.markdown}
-                />
+              {!assistantBusy && !conversationTimeline.length && !activeProject.selection_state.intakeSummary && (
+                <div className="assistant-message">
+                  <span>AI导演</span>
+                  <p>右侧填写基础信息和素材后，点击"开始整理资料"。系统会一次性返回项目信息汇总、内容单元概览和动态内容逻辑推荐。</p>
+                </div>
               )}
 
               {activeLogicTask && (
                 <MarkdownBlock title={activeLogicTask.title} markdown={activeLogicTask.markdown || activeLogicTask.message} busy />
+              )}
+
+              {activeStyleTask && (
+                <MarkdownBlock title={activeStyleTask.title} markdown={activeStyleTask.markdown || activeStyleTask.message} busy />
               )}
 
               {logicMarkdown && !activeLogicTask && (
@@ -976,20 +1512,65 @@ function App() {
                     </div>
                     {selectedLogic && <strong className="confirmed-pill">{selectedLogic}</strong>}
                   </div>
-                  <ol className="choice-list" aria-label="内容逻辑选项">
+                  <ol className="choice-list logic-choice-list" aria-label="内容逻辑选项">
                     {logicOptions.map((option, index) => (
                       <li className={selectedLogic === option.type ? "active" : ""} key={option.type}>
-                        <strong>{optionLetters[index]}.</strong>
-                        <span className="logic-choice-body">
-                          <b>{option.type}</b>
-                          {option.fit && <em>{option.fit}</em>}
-                          {option.description && <small>{option.description}</small>}
-                        </span>
+                        <button
+                          className="choice-option"
+                          type="button"
+                          onClick={() => confirmLogic(option.type, optionLetters[index])}
+                          disabled={Boolean(activeBusy || selectedLogic)}
+                        >
+                          <strong>{optionLetters[index]}.</strong>
+                          <span className="logic-choice-body">
+                            <b>{option.type}</b>
+                            {option.fit && <em>{option.fit}</em>}
+                            {option.description && <small>{option.description}</small>}
+                          </span>
+                        </button>
                       </li>
                     ))}
                   </ol>
                   {!logicOptions.length && (
                     <p className="required-tip">暂未解析到可选项，可以继续输入修改意见，我会重新推荐。</p>
+                  )}
+                </section>
+              )}
+
+              {selectedLogic && styleMarkdown && !activeStyleTask && (
+                <MarkdownBlock title="文风推荐" markdown={styleMarkdown} />
+              )}
+
+              {selectedLogic && styleMarkdown && !activeStyleTask && (
+                <section className="logic-panel">
+                  <div className="panel-head">
+                    <div>
+                      <span>文风确认</span>
+                      <h2>{selectedWritingStyle ? "已确认文风" : "输入选项字母确认，或直接写修改意见"}</h2>
+                    </div>
+                    {selectedWritingStyle && <strong className="confirmed-pill">{selectedWritingStyle}</strong>}
+                  </div>
+                  <ol className="choice-list logic-choice-list" aria-label="文风选项">
+                    {styleOptions.map((option, index) => (
+                      <li className={selectedWritingStyle === option.type ? "active" : ""} key={option.type}>
+                        <button
+                          className="choice-option"
+                          type="button"
+                          onClick={() => confirmWritingStyle(option.type, optionLetters[index])}
+                          disabled={Boolean(activeBusy || selectedWritingStyle)}
+                        >
+                          <strong>{optionLetters[index]}.</strong>
+                          <span className="logic-choice-body">
+                            <b>{option.type}</b>
+                            {option.fit && <em>{option.fit}</em>}
+                            {option.description && <small>{option.description}</small>}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                  {!styleOptions.length && (
+                    <p className="required-tip">暂未解析到可选文风，可以继续输入修改意见，我会重新推荐。</p>
                   )}
                 </section>
               )}
@@ -1005,8 +1586,15 @@ function App() {
                   <ol className="choice-list generate-choice-list" aria-label="生成路径选项">
                     {generationChoices.map((choice) => (
                       <li key={choice}>
-                        <strong>{choice.slice(0, 2)}</strong>
-                        <span>{choice.slice(3)}</span>
+                        <button
+                          className="choice-option"
+                          type="button"
+                          onClick={() => chooseGenerationPath(choice.slice(0, 1))}
+                          disabled={Boolean(activeBusy)}
+                        >
+                          <strong>{choice.slice(0, 2)}</strong>
+                          <span>{choice.slice(3)}</span>
+                        </button>
                       </li>
                     ))}
                   </ol>
@@ -1053,7 +1641,7 @@ function App() {
         <div className="brief-head">
           <div>
             <span>PROJECT BRIEF</span>
-            <h2>项目信息与素材</h2>
+            <h2>项目知识库</h2>
           </div>
           <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(false)} aria-label="关闭资料栏">
             <X size={18} />
@@ -1089,20 +1677,60 @@ function App() {
           {error}
         </button>
       )}
+      {deleteConfirmProject && (
+        <ConfirmModal
+          project={deleteConfirmProject}
+          onConfirm={confirmDeleteProject}
+          onCancel={() => setDeleteConfirmProject(null)}
+        />
+      )}
     </div>
   );
 }
 
-function MessageList({ messages }: { messages: ChatMessage[] }) {
-  if (!messages.length) return null;
+function ConversationTimeline({ items }: { items: TimelineItem[] }) {
+  if (!items.length) return null;
   return (
     <section className="dialogue-log" aria-label="对话记录">
-      {messages.map((message, index) => (
-        <article className={`dialogue-bubble ${message.role}`} key={`${message.role}-${index}`}>
-          <span>{message.role === "user" ? "你" : "AI导演"}</span>
-          <p>{message.content}</p>
-        </article>
-      ))}
+      {items.map((entry, index) => {
+        if (entry.type === "status") {
+          return (
+            <div className="assistant-message" key={entry.key}>
+              <span>AI导演</span>
+              <p>
+                <Loader2 size={16} className="spin inline-spin" />
+                {entry.text}
+              </p>
+            </div>
+          );
+        }
+        if (entry.type === "intake") {
+          return (
+            <MarkdownBlock
+              key={entry.key}
+              title={entry.title || "资料整理与内容逻辑推荐"}
+              markdown={entry.markdown}
+              busy={entry.busy}
+            />
+          );
+        }
+        if (entry.type === "logic") {
+          return (
+            <MarkdownBlock
+              key={entry.key}
+              title={entry.item.title || `重新推荐内容逻辑 ${index + 1}`}
+              markdown={entry.item.markdown}
+            />
+          );
+        }
+        const { message } = entry;
+        return (
+          <article className={`dialogue-bubble ${message.role}`} key={entry.key}>
+            <span>{message.role === "user" ? "你" : "AI导演"}</span>
+            <p>{message.content}</p>
+          </article>
+        );
+      })}
     </section>
   );
 }
@@ -1122,13 +1750,15 @@ function ChatComposer(props: {
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
-          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") onSend();
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            if (!disabled && value.trim()) onSend();
+          }
         }}
         placeholder={placeholder}
       />
       <button className="primary" type="button" onClick={onSend} disabled={disabled || !value.trim()}>
-        <Send size={16} />
-        发送
+        <Send size={18} />
       </button>
     </section>
   );
@@ -1155,7 +1785,7 @@ function ProjectBriefPanel(props: {
         <ComboInput label="客户类型" value={project.meta.client_type} presets={fieldPresets.client_type} onChange={(value) => onMetaChange("client_type", value)} />
         <ComboInput label="影片类型" value={project.meta.video_type} presets={fieldPresets.video_type} onChange={(value) => onMetaChange("video_type", value)} />
         <ComboInput label="时长" value={project.meta.duration} presets={fieldPresets.duration} onChange={(value) => onMetaChange("duration", value)} />
-        <ComboInput label="风格基调" value={project.meta.style} presets={fieldPresets.style} onChange={(value) => onMetaChange("style", value)} />
+        <ComboInput label="风格基调（选填）" value={project.meta.style} presets={fieldPresets.style} onChange={(value) => onMetaChange("style", value)} />
         <ComboInput label="成片比例" value={project.meta.aspect_ratio} presets={fieldPresets.aspect_ratio} onChange={(value) => onMetaChange("aspect_ratio", value)} />
       </section>
 
@@ -1181,11 +1811,11 @@ function ProjectBriefPanel(props: {
         <ContentUnitEditor units={project.content_units} onChange={onUnitsChange} />
       </section>
 
-      <button className="start-btn" type="button" onClick={onStart} disabled={!canStart || Boolean(busy)}>
+      <button className="start-btn" type="button" onClick={() => onStart()} disabled={!canStart || Boolean(busy)}>
         <MessageSquareText size={18} />
         开始整理资料
       </button>
-      {!canStart && <p className="required-tip">请先补齐项目名称、客户类型、影片类型、时长、风格基调、成片比例。</p>}
+      {!canStart && <p className="required-tip">请先补齐项目名称、客户类型、影片类型、时长、成片比例。</p>}
     </div>
   );
 }
@@ -1328,7 +1958,12 @@ function GeneratedDocument(props: {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root")!;
+const rootHost = rootElement as HTMLElement & { __directorRoot?: ReturnType<typeof createRoot> };
+const root = rootHost.__directorRoot ?? createRoot(rootElement);
+rootHost.__directorRoot = root;
+
+root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

@@ -1,7 +1,10 @@
 .env
 outputs/
+backend-server.log
+frontend-server.log
 frontend/node_modules/
 frontend/dist/
+frontend/.local-backend/
 frontend/tsconfig.tsbuildinfo
 backend/__pycache__/
 **/__pycache__/
