@@ -613,7 +613,7 @@ function OpeningPage({ onEnter }: { onEnter: () => void }) {
       <div className="opening-corner br" />
       <div className="opening-content">
         <span className="opening-label">AI Video Production</span>
-        <h1 className="opening-title">AI <strong>导演</strong>工作台</h1>
+        <h1 className="opening-title">AI<strong>导演</strong>工作台</h1>
         <p className="opening-subtitle">智能分镜生成 · 宣传片创作助手</p>
         <div className="opening-divider" />
         <button className="opening-enter-btn" type="button" onClick={handleEnter}>
@@ -1514,7 +1514,7 @@ function App() {
           {!loading && !activeProject && (
             <div className="welcome-empty">
               <div className="welcome-empty-content">
-                <h2>AI 导演工作台</h2>
+                <h2>AI导演工作台</h2>
                 <p>智能分镜生成 · 宣传片创作助手</p>
                 <button className="primary start-new-btn" type="button" onClick={createProject}>
                   开始创作
