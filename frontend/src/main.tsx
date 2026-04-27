@@ -194,7 +194,7 @@ const fieldPresets: Record<keyof Pick<ProjectMeta, "client_type" | "video_type" 
 const assetConfigs: Array<{ type: AssetType; title: string; hint: string; accept: string; optional?: boolean }> = [
   { type: "company_intro", title: "拍摄需求", hint: "PDF / Word / 图片", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp" },
   { type: "reference", title: "拍摄必要元素", hint: "视频 / PDF / 图片", accept: ".mp4,.mov,.webm,.m4v,.pdf,.png,.jpg,.jpeg,.webp" },
-  { type: "content_unit", title: "内容单元素材", hint: "产品、场景、业务资料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.m4v" },
+  { type: "content_unit", title: "参考样片", hint: "产品、场景、业务资料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.m4v" },
   { type: "brand", title: "公司资料", hint: "Logo / VI / 旧物料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp", optional: true }
 ];
 
