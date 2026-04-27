@@ -500,7 +500,7 @@ textarea:focus {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
+  gap: 0;
   position: relative;
 }
 
@@ -911,7 +911,7 @@ textarea:focus {
 .composer-field {
   display: grid;
   gap: 10px;
-  padding: 14px 16px 16px;
+  padding: 12px 16px;
   border: 1px solid rgba(var(--accent-soft-rgb), 0.2);
   border-radius: 16px;
   background:
@@ -920,6 +920,13 @@ textarea:focus {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
     0 16px 34px rgba(var(--accent-soft-rgb), 0.08);
+}
+
+.composer-field:focus-within {
+  border: 1px solid rgba(var(--accent-soft-rgb), 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 0 20px rgba(var(--accent-soft-rgb), 0.5);
 }
 
 .composer-field textarea {
@@ -959,10 +966,11 @@ textarea:focus {
 .composer-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: end;
   gap: 12px;
 }
 
+.composer-upload-btn,
 .composer-send-btn {
   width: 36px;
   min-height: 36px;
@@ -976,6 +984,7 @@ textarea:focus {
   backdrop-filter: blur(10px);
 }
 
+.composer-upload-btn:hover:not(:disabled),
 .composer-send-btn:hover:not(:disabled),
 .composer-send-btn.primary:hover:not(:disabled) {
   background: rgba(248, 244, 239, 0.98);
@@ -983,6 +992,7 @@ textarea:focus {
   color: var(--accent-soft-deep);
 }
 
+.composer-upload-btn:disabled,
 .composer-send-btn:disabled,
 .composer-send-btn.primary:disabled {
   background: rgba(244, 246, 248, 0.82);
@@ -992,6 +1002,7 @@ textarea:focus {
   opacity: 1;
 }
 
+.composer-upload-btn svg,
 .composer-send-btn svg {
   color: currentColor;
 }
@@ -1434,7 +1445,7 @@ textarea:focus {
   cursor: default;
 }
 
-.choice-option:hover strong {
+.choice-option:hover:not(:disabled) strong {
   color: #fff;
 }
 
@@ -1781,6 +1792,7 @@ textarea:focus {
   .topbar {
     padding: 10px 16px;
     min-height: 56px;
+    gap: 16px;
   }
 
   .sidebar-toggle-docked {
