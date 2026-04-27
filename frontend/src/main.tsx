@@ -6,6 +6,7 @@ import {
   ArrowRight,
   FolderPlus,
   Loader2,
+  MessageCircle,
   MessageSquareText,
   PanelLeft,
   PanelRight,
@@ -637,6 +638,8 @@ function App() {
   const [streamingMarkdown, setStreamingMarkdown] = useState("");
   const [rightOpen, setRightOpen] = useState(false);
   const [leftOpen, setLeftOpen] = useState(false);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [recentHistoryOpen, setRecentHistoryOpen] = useState(false);
   const [logicRevision, setLogicRevision] = useState("");
   const [chatInput, setChatInput] = useState("");
   const [uploadingAssetCounts, setUploadingAssetCounts] = useState<Record<string, number>>({});
@@ -646,6 +649,7 @@ function App() {
   const [styleTasks, setStyleTasks] = useState<Record<string, LogicTask>>({});
   const [deleteConfirmProject, setDeleteConfirmProject] = useState<ProjectSummary | null>(null);
   const conversationEndRef = useRef<HTMLDivElement | null>(null);
+  const recentHistoryRef = useRef<HTMLDivElement | null>(null);
   const saveTimer = useRef<number | null>(null);
   const savedSignature = useRef("");
   const booted = useRef(false);
@@ -688,6 +692,7 @@ function App() {
   const logicInputActive = Boolean(logicMarkdown && !selectedLogic);
   const styleInputActive = Boolean(selectedLogic && !selectedWritingStyle && !activeProject?.full_markdown && !isGeneratingDocument && !activeStyleTask);
   const generateInputActive = Boolean(selectedLogic && selectedWritingStyle && !activeProject?.full_markdown && !isGeneratingDocument);
+  const recentProjects = projects.slice(0, 10);
   const logicChoiceText = logicOptions.length ? optionLetters.slice(0, logicOptions.length).join("/") : "修改意见";
   const styleChoiceText = styleOptions.length ? optionLetters.slice(0, styleOptions.length).join("/") : "修改意见";
   const generationChoices = activeProject?.proposal_markdown
@@ -767,6 +772,21 @@ function App() {
       : activeProject.full_markdown || activeProject.final_markdown;
     setDraftMarkdown(markdown || "");
   }, [activeProject?.id, activeProject?.active_version, activeProject?.proposal_markdown, activeProject?.full_markdown, activeProject?.final_markdown, isGeneratingDocument]);
+
+  useEffect(() => {
+    if (!leftCollapsed) setRecentHistoryOpen(false);
+  }, [leftCollapsed]);
+
+  useEffect(() => {
+    if (!recentHistoryOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!recentHistoryRef.current?.contains(event.target as Node)) {
+        setRecentHistoryOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [recentHistoryOpen]);
 
   async function loadProjects(preferredId?: string) {
     setLoading(true);
@@ -1391,11 +1411,19 @@ function App() {
   }
 
     return (
-    <div className="director-app">
-      <aside className={`project-sidebar ${leftOpen ? "open" : ""}`}>
-        <img src="/logo.png" alt="" className="brand-logo" />
+    <div className={`director-app ${leftCollapsed ? "left-collapsed" : ""}`}>
+      <aside className={`project-sidebar ${leftOpen ? "open" : ""} ${leftCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
-          <div className="sidebar-title">AI导演工作台</div>
+          <img src="/logo123.png" alt="" className="brand-logo" />
+          <button
+            className="icon-btn sidebar-toggle desktop-only"
+            type="button"
+            onClick={() => setLeftCollapsed((current) => !current)}
+            aria-label={leftCollapsed ? "展开项目栏" : "折叠项目栏"}
+            title={leftCollapsed ? "展开项目栏" : "折叠项目栏"}
+          >
+            {leftCollapsed ? <PanelRight size={18} /> : <PanelLeft size={18} />}
+          </button>
           <button className="icon-btn mobile-only" type="button" onClick={() => setLeftOpen(false)} aria-label="关闭项目栏">
             <X size={18} />
           </button>
@@ -1419,20 +1447,65 @@ function App() {
           ))}
           {!projects.length && <p className="empty-copy">还没有项目，先新建一个。</p>}
         </div>
+        <div className="collapsed-sidebar-tools desktop-only" ref={recentHistoryRef}>
+          <button
+            className={`icon-btn collapsed-chat-trigger ${recentHistoryOpen ? "active" : ""}`}
+            type="button"
+            onClick={() => setRecentHistoryOpen((current) => !current)}
+            aria-label="显示最近历史记录"
+            title="显示最近历史记录"
+          >
+            <MessageCircle size={18} />
+          </button>
+          {recentHistoryOpen && (
+            <div className="collapsed-history-popover">
+              <div className="collapsed-history-head">最近历史</div>
+              <div className="collapsed-history-list">
+                {recentProjects.map((project) => (
+                  <button
+                    className={`collapsed-history-item ${activeProject?.id === project.id ? "active" : ""}`}
+                    key={project.id}
+                    type="button"
+                    onClick={() => {
+                      setRecentHistoryOpen(false);
+                      loadProjects(project.id);
+                    }}
+                  >
+                    {project.project_name || "未命名项目"}
+                  </button>
+                ))}
+                {!recentProjects.length && <p className="collapsed-history-empty">还没有历史项目</p>}
+              </div>
+            </div>
+          )}
+        </div>
       </aside>
 
       <main className="workspace">
         <header className="topbar">
-          <button className="icon-btn mobile-only" type="button" onClick={() => setLeftOpen(true)} aria-label="打开项目栏">
-            <PanelLeft size={20} />
+          <button
+            className="icon-btn sidebar-toggle sidebar-toggle-docked desktop-only"
+            type="button"
+            onClick={() => setLeftCollapsed((current) => !current)}
+            aria-label={leftCollapsed ? "展开项目栏" : "折叠项目栏"}
+            title={leftCollapsed ? "展开项目栏" : "折叠项目栏"}
+          >
+            {leftCollapsed ? <PanelRight size={18} /> : <PanelLeft size={18} />}
           </button>
-          <div>
+          <div className="topbar-leading">
+            <button className="icon-btn mobile-only" type="button" onClick={() => setLeftOpen(true)} aria-label="打开项目栏">
+              <PanelLeft size={20} />
+            </button>
+          </div>
+          <div className="topbar-title">
             <span>AI DIRECTOR WORKBENCH</span>
             <h1>{activeProject?.meta.project_name || "今天想把什么做成分镜？"}</h1>
           </div>
-          <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(true)} aria-label="打开资料栏">
-            <PanelRight size={20} />
-          </button>
+          <div className="topbar-trailing">
+            <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(true)} aria-label="打开资料栏">
+              <PanelRight size={20} />
+            </button>
+          </div>
         </header>
 
         <section className="conversation">
@@ -1464,22 +1537,13 @@ function App() {
                 </button>
               </div>
               <div className="chat-empty-input">
-                <textarea
+                <ComposerField
                   value={chatInput}
                   disabled={Boolean(busy)}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      if (!busy && chatInput.trim()) sendChatMessage();
-                    }
-                  }}
                   placeholder={canStart ? "输入补充想法或直接点击上方按钮开始..." : "请先在右侧填写项目基础信息..."}
-                  rows={1}
+                  onChange={setChatInput}
+                  onSend={sendChatMessage}
                 />
-                <button className="primary" type="button" onClick={sendChatMessage} disabled={Boolean(busy) || !chatInput.trim()}>
-                  <Send size={18} />
-                </button>
               </div>
               {!canStart && <p className="empty-hint">请先填写项目名称、客户类型、影片类型、时长、成片比例</p>}
             </div>
@@ -1641,7 +1705,7 @@ function App() {
         <div className="brief-head">
           <div>
             <span>PROJECT BRIEF</span>
-            <h2>项目知识库</h2>
+            <h2>项目信息与素材</h2>
           </div>
           <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(false)} aria-label="关闭资料栏">
             <X size={18} />
@@ -1735,7 +1799,7 @@ function ConversationTimeline({ items }: { items: TimelineItem[] }) {
   );
 }
 
-function ChatComposer(props: {
+function ComposerField(props: {
   value: string;
   disabled: boolean;
   placeholder: string;
@@ -1743,9 +1807,19 @@ function ChatComposer(props: {
   onSend: () => void;
 }) {
   const { value, disabled, placeholder, onChange, onSend } = props;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 280)}px`;
+  }, [value]);
+
   return (
-    <section className="chat-composer" aria-label="项目对话框">
+    <div className="composer-field">
       <textarea
+        ref={textareaRef}
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
@@ -1756,10 +1830,34 @@ function ChatComposer(props: {
           }
         }}
         placeholder={placeholder}
+        rows={1}
       />
-      <button className="primary" type="button" onClick={onSend} disabled={disabled || !value.trim()}>
-        <Send size={18} />
-      </button>
+      <div className="composer-actions">
+        <button className="composer-send-btn primary" type="button" onClick={onSend} disabled={disabled || !value.trim()} aria-label="发送消息">
+          <Send size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ChatComposer(props: {
+  value: string;
+  disabled: boolean;
+  placeholder: string;
+  onChange: (value: string) => void;
+  onSend: () => void;
+}) {
+  const { value, disabled, placeholder, onChange, onSend } = props;
+  return (
+    <section className="chat-composer" aria-label="项目对话框">
+      <ComposerField
+        value={value}
+        disabled={disabled}
+        placeholder={placeholder}
+        onChange={onChange}
+        onSend={onSend}
+      />
     </section>
   );
 }
