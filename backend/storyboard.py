@@ -6,7 +6,6 @@ import html
 import re
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -15,6 +14,7 @@ from openai import APIError, OpenAI
 
 from .models import ContentUnit, ProjectAsset, ProjectState, StepResult
 from .storage import ROOT_DIR, ensure_project, load_project, project_dir, safe_filename, save_project
+from .time_utils import now_iso, today_iso_date
 
 
 STEP_DEFINITIONS: list[tuple[str, str]] = [
@@ -194,7 +194,7 @@ def generate_step(project: ProjectState, step_key: str) -> tuple[ProjectState, S
         title=title,
         content=content,
         confirmed=False,
-        updated_at=datetime.now().isoformat(timespec="seconds"),
+        updated_at=now_iso(),
     )
     project.steps[step_key] = step
     save_project(project)
@@ -209,7 +209,7 @@ def assemble_markdown(project: ProjectState, override: str | None = None) -> str
         f"# {meta.project_name}分镜脚本",
         "",
         f"版本：{meta.version}",
-        f"生成日期：{datetime.now().date().isoformat()}",
+        f"生成日期：{today_iso_date()}",
         f"客户类型：{meta.client_type}",
         f"影片类型：{meta.video_type}",
         f"成片规格：{meta.duration}，{meta.aspect_ratio}",
@@ -363,7 +363,7 @@ def build_reading_html(project: ProjectState, markdown: str, version: str) -> st
     meta = project.meta
     title = f"{meta.project_name or '未命名项目'}分镜脚本"
     body = markdown_to_reading_html(markdown)
-    generated_at = datetime.now().strftime("%Y-%m-%d")
+    generated_at = today_iso_date()
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -630,7 +630,7 @@ def generate_creative_preview(project: ProjectState) -> tuple[ProjectState, str]
         title="创作预览与确认项",
         content=content,
         confirmed=False,
-        updated_at=datetime.now().isoformat(timespec="seconds"),
+        updated_at=now_iso(),
     )
     save_project(project)
     return project, content
@@ -787,7 +787,7 @@ def stream_selection_document(project: ProjectState, prompt: str, selection_key:
                 title=step_title,
                 content=content,
                 confirmed=False,
-                updated_at=datetime.now().isoformat(timespec="seconds"),
+                updated_at=now_iso(),
             )
             save_project(project)
             yield f"data: {json.dumps({'type': 'done', 'project': project.model_dump()}, ensure_ascii=False)}\n\n"
@@ -862,7 +862,7 @@ def stream_creative_preview(project: ProjectState) -> StreamingResponse:
                 title="创作预览与确认项",
                 content=content,
                 confirmed=False,
-                updated_at=datetime.now().isoformat(timespec="seconds"),
+                updated_at=now_iso(),
             )
             save_project(project)
             yield f"data: {json.dumps({'type': 'done', 'project': project.model_dump()}, ensure_ascii=False)}\n\n"
