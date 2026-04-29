@@ -42,6 +42,7 @@ type ContentUnit = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  created_at?: string;
   streaming?: boolean;
   meta?: {
     kind?: "intake_restart";
@@ -129,11 +130,19 @@ type LogicHistoryItem = {
 
 type IntakeHistoryItem = LogicHistoryItem;
 
+type StyleHistoryItem = LogicHistoryItem;
+
+type DocumentHistoryItem = LogicHistoryItem & {
+  version: ExportVersion;
+};
+
 type TimelineItem =
-  | { type: "message"; message: ChatMessage; key: string }
-  | { type: "status"; text: string; key: string }
-  | { type: "intake"; title?: string; markdown: string; key: string; busy?: boolean }
-  | { type: "logic"; item: LogicHistoryItem; key: string };
+  | { type: "message"; message: ChatMessage; key: string; created_at: string; order: number }
+  | { type: "status"; text: string; key: string; created_at: string; order: number }
+  | { type: "intake"; title?: string; markdown: string; key: string; busy?: boolean; created_at: string; order: number }
+  | { type: "logic"; item: LogicHistoryItem; key: string; created_at: string; order: number }
+  | { type: "style"; item: StyleHistoryItem; key: string; created_at: string; order: number }
+  | { type: "document"; item: DocumentHistoryItem; key: string; created_at: string; order: number };
 
 type LogicOption = {
   type: string;
@@ -142,6 +151,15 @@ type LogicOption = {
 };
 
 const nowIso = () => new Date().toISOString().slice(0, 19);
+const formatLocalIso = (date: Date) => {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+const addSeconds = (value: string, seconds: number) => {
+  const time = Date.parse(value);
+  if (Number.isNaN(time)) return value || nowIso();
+  return formatLocalIso(new Date(time + seconds * 1000));
+};
 const optionLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const genericLogicTitles = new Set(["内容逻辑推荐", "动态内容逻辑推荐", "内容逻辑", "逻辑推荐", "叙事逻辑推荐"]);
 const genericStyleTitles = new Set(["文风推荐", "推荐文风", "文风确认", "文案风格推荐", "文案风格"]);
@@ -192,7 +210,7 @@ const fieldPresets: Record<keyof Pick<ProjectMeta, "client_type" | "video_type" 
 };
 
 const assetConfigs: Array<{ type: AssetType; title: string; hint: string; accept: string; optional?: boolean }> = [
-  { type: "company_intro", title: "拍摄需求", hint: "PDF / Word / 图片", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp" },
+  { type: "company_intro", title: "拍摄需求brief", hint: "PDF / Word / 图片", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp" },
   { type: "reference", title: "拍摄必要元素", hint: "视频 / PDF / 图片", accept: ".mp4,.mov,.webm,.m4v,.pdf,.png,.jpg,.jpeg,.webp" },
   { type: "content_unit", title: "参考样片", hint: "产品、场景、业务资料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp,.mp4,.mov,.webm,.m4v" },
   { type: "brand", title: "公司资料", hint: "Logo / VI / 旧物料", accept: ".pdf,.docx,.png,.jpg,.jpeg,.webp", optional: true }
@@ -338,6 +356,35 @@ function parseLogicHistory(project?: ProjectState | null): LogicHistoryItem[] {
   }
 }
 
+function parseStyleHistory(project?: ProjectState | null): StyleHistoryItem[] {
+  const raw = project?.selection_state.styleRecommendationHistory;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as StyleHistoryItem[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item && typeof item.id === "string" && typeof item.markdown === "string");
+  } catch {
+    return [];
+  }
+}
+
+function parseDocumentHistory(project?: ProjectState | null): DocumentHistoryItem[] {
+  const raw = project?.selection_state.documentGenerationHistory;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as DocumentHistoryItem[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => (
+      item
+      && typeof item.id === "string"
+      && typeof item.markdown === "string"
+      && (item.version === "proposal" || item.version === "full")
+    ));
+  } catch {
+    return [];
+  }
+}
+
 function withAppendedLogicHistory(project: ProjectState, item: LogicHistoryItem): ProjectState {
   const history = parseLogicHistory(project);
   return {
@@ -345,6 +392,30 @@ function withAppendedLogicHistory(project: ProjectState, item: LogicHistoryItem)
     selection_state: {
       ...project.selection_state,
       logicRecommendationHistory: JSON.stringify([...history, item])
+    },
+    updated_at: nowIso()
+  };
+}
+
+function withAppendedStyleHistory(project: ProjectState, item: StyleHistoryItem): ProjectState {
+  const history = parseStyleHistory(project);
+  return {
+    ...project,
+    selection_state: {
+      ...project.selection_state,
+      styleRecommendationHistory: JSON.stringify([...history, item])
+    },
+    updated_at: nowIso()
+  };
+}
+
+function withAppendedDocumentHistory(project: ProjectState, item: DocumentHistoryItem): ProjectState {
+  const history = parseDocumentHistory(project);
+  return {
+    ...project,
+    selection_state: {
+      ...project.selection_state,
+      documentGenerationHistory: JSON.stringify([...history, item])
     },
     updated_at: nowIso()
   };
@@ -468,12 +539,14 @@ function appendConversationMessages(
   assistantReply: string,
   meta?: ChatMessage["meta"]
 ): ProjectState {
+  const userCreatedAt = nowIso();
+  const assistantCreatedAt = nowIso();
   return {
     ...project,
     messages: [
       ...(project.messages || []),
-      { role: "user", content, meta },
-      { role: "assistant", content: assistantReply, meta }
+      { role: "user", content, meta, created_at: userCreatedAt },
+      { role: "assistant", content: assistantReply, meta, created_at: assistantCreatedAt }
     ],
     updated_at: nowIso()
   };
@@ -483,24 +556,52 @@ function buildConversationTimeline(
   messages: ChatMessage[],
   logicHistory: LogicHistoryItem[],
   intakeHistory: IntakeHistoryItem[],
+  styleHistory: StyleHistoryItem[],
+  documentHistory: DocumentHistoryItem[],
   intakeMarkdown: string,
   statusText: string,
-  activeIntakeRunId = ""
+  activeIntakeRunId = "",
+  fallbackCreatedAt = nowIso()
 ): TimelineItem[] {
   const timeline: TimelineItem[] = [];
-  let historyIndex = 0;
+  let logicIndex = 0;
+  let styleIndex = 0;
   let liveIntakeInserted = false;
-  let legacyIntakeInserted = false;
   const intakeByRunId = new Map(intakeHistory.filter((item) => item.runId).map((item) => [item.runId, item]));
-  const anchoredRunIds = new Set<string>();
-  const legacyIntakeHistory = intakeHistory.filter((item) => !item.runId);
-  const appendIntakeHistory = (item: IntakeHistoryItem) => {
+  const usedIntakeIds = new Set<string>();
+  const fallbackTime = Date.parse(fallbackCreatedAt);
+  const messageTime = (message: ChatMessage) => {
+    const parsed = Date.parse(message.created_at || "");
+    return Number.isNaN(parsed) ? fallbackTime : parsed;
+  };
+  const itemTime = (item: LogicHistoryItem) => {
+    const parsed = Date.parse(item.created_at || "");
+    return Number.isNaN(parsed) ? fallbackTime : parsed;
+  };
+  const unanchoredIntakeHistory = intakeHistory
+    .filter((item) => !item.runId || !messages.some((message) => message.meta?.runId === item.runId))
+    .sort((a, b) => itemTime(a) - itemTime(b));
+  let unanchoredIntakeIndex = 0;
+  const appendIntakeHistory = (item: IntakeHistoryItem, order: number) => {
+    if (usedIntakeIds.has(item.id)) return;
+    usedIntakeIds.add(item.id);
     timeline.push({
       type: "intake",
       title: item.title,
       markdown: item.markdown,
-      key: `intake-${item.id}`
+      key: `intake-${item.id}`,
+      created_at: item.created_at || fallbackCreatedAt,
+      order
     });
+  };
+  const appendDueUnanchoredIntakes = (beforeTime: number, order: number) => {
+    while (
+      unanchoredIntakeIndex < unanchoredIntakeHistory.length
+      && itemTime(unanchoredIntakeHistory[unanchoredIntakeIndex]) <= beforeTime
+    ) {
+      appendIntakeHistory(unanchoredIntakeHistory[unanchoredIntakeIndex], order - 0.2);
+      unanchoredIntakeIndex += 1;
+    }
   };
   const appendLiveIntake = (runId = activeIntakeRunId) => {
     if (intakeMarkdown.trim()) {
@@ -509,41 +610,46 @@ function buildConversationTimeline(
         title: runId ? "重新整理资料与内容逻辑推荐" : "资料整理与内容逻辑推荐",
         markdown: intakeMarkdown,
         key: runId ? `intake-live-${runId}` : "intake-live",
-        busy: Boolean(statusText)
+        busy: Boolean(statusText),
+        created_at: nowIso(),
+        order: 20
       });
     } else if (statusText) {
-      timeline.push({ type: "status", text: statusText, key: runId ? `status-intake-${runId}` : "status-intake" });
+      timeline.push({ type: "status", text: statusText, key: runId ? `status-intake-${runId}` : "status-intake", created_at: nowIso(), order: 20 });
     }
     liveIntakeInserted = true;
   };
-  const appendLegacyIntakeHistory = () => {
-    if (legacyIntakeInserted) return;
-    legacyIntakeHistory.forEach(appendIntakeHistory);
-    legacyIntakeInserted = true;
-  };
-
   messages.forEach((message, index) => {
-    if (!legacyIntakeInserted && message.role === "user" && message.meta?.kind === "intake_restart") {
-      appendLegacyIntakeHistory();
-    }
-    timeline.push({ type: "message", message, key: `message-${index}` });
+    const currentMessageTime = messageTime(message);
+    appendDueUnanchoredIntakes(currentMessageTime, index);
+    timeline.push({
+      type: "message",
+      message,
+      key: `message-${index}`,
+      created_at: message.created_at || fallbackCreatedAt,
+      order: index
+    });
     if (message.role === "assistant") {
       const restartRunId = message.meta?.kind === "intake_restart"
         ? message.meta.runId
         : "";
       if (restartRunId) {
-        anchoredRunIds.add(restartRunId);
         const historyItem = intakeByRunId.get(restartRunId);
         if (historyItem) {
-          appendIntakeHistory(historyItem);
+          appendIntakeHistory(historyItem, index + 0.6);
         } else if (activeIntakeRunId === restartRunId && statusText) {
           appendLiveIntake(restartRunId);
         }
       }
-      if (message.content.includes("重新推荐内容逻辑") && logicHistory[historyIndex]) {
-        const item = logicHistory[historyIndex];
-        timeline.push({ type: "logic", item, key: `logic-${item.id}` });
-        historyIndex += 1;
+      if (message.content.includes("重新推荐内容逻辑") && logicHistory[logicIndex]) {
+        const item = logicHistory[logicIndex];
+        timeline.push({ type: "logic", item, key: `logic-${item.id}`, created_at: item.created_at || fallbackCreatedAt, order: index + 0.5 });
+        logicIndex += 1;
+      }
+      if (message.content.includes("推荐文风") && styleHistory[styleIndex]) {
+        const item = styleHistory[styleIndex];
+        timeline.push({ type: "style", item, key: `style-${item.id}`, created_at: item.created_at || fallbackCreatedAt, order: index + 0.6 });
+        styleIndex += 1;
       }
     }
   });
@@ -552,14 +658,18 @@ function buildConversationTimeline(
     appendLiveIntake();
   }
 
-  appendLegacyIntakeHistory();
+  appendDueUnanchoredIntakes(Number.POSITIVE_INFINITY, messages.length || 1);
 
-  intakeHistory.forEach((item) => {
-    if (item.runId && !anchoredRunIds.has(item.runId)) appendIntakeHistory(item);
+  logicHistory.slice(logicIndex).forEach((item) => {
+    timeline.push({ type: "logic", item, key: `logic-${item.id}`, created_at: item.created_at || fallbackCreatedAt, order: 30 });
   });
 
-  logicHistory.slice(historyIndex).forEach((item) => {
-    timeline.push({ type: "logic", item, key: `logic-${item.id}` });
+  styleHistory.slice(styleIndex).forEach((item) => {
+    timeline.push({ type: "style", item, key: `style-${item.id}`, created_at: item.created_at || fallbackCreatedAt, order: 40 });
+  });
+
+  documentHistory.forEach((item) => {
+    timeline.push({ type: "document", item, key: `document-${item.id}`, created_at: item.created_at || fallbackCreatedAt, order: 50 });
   });
 
   return timeline;
@@ -660,8 +770,11 @@ function App() {
   const styleOptions = useMemo(() => extractStyleOptions(styleMarkdown), [styleMarkdown]);
   const logicHistory = useMemo(() => parseLogicHistory(activeProject), [activeProject?.selection_state.logicRecommendationHistory]);
   const intakeHistory = useMemo(() => parseIntakeHistory(activeProject), [activeProject?.selection_state.intakeSummaryHistory]);
+  const styleHistory = useMemo(() => parseStyleHistory(activeProject), [activeProject?.selection_state.styleRecommendationHistory]);
+  const documentHistory = useMemo(() => parseDocumentHistory(activeProject), [activeProject?.selection_state.documentGenerationHistory]);
   const selectedLogic = activeProject?.selection_state.selectedLogic || "";
   const selectedWritingStyle = activeProject?.selection_state.selectedWritingStyle || "";
+  const hasArchivedStyleMarkdown = Boolean(styleMarkdown && styleHistory.some((item) => item.markdown.trim() === styleMarkdown.trim()));
   const activeDocumentTask = activeProject ? documentTasks[activeProject.id] : undefined;
   const activeLogicTask = activeProject ? logicTasks[activeProject.id] : undefined;
   const activeStyleTask = activeProject ? styleTasks[activeProject.id] : undefined;
@@ -672,6 +785,7 @@ function App() {
       ? activeProject.proposal_markdown
       : activeProject.full_markdown || activeProject.final_markdown
     : "";
+  const hasArchivedDocumentMarkdown = Boolean(activeDocumentMarkdown && documentHistory.some((item) => item.markdown.trim() === activeDocumentMarkdown.trim()));
   const assistantBusy = activeBusy && !isGeneratingDocument && (
     busy === "正在整理资料并推荐内容逻辑"
     || (busy === "正在重新推荐内容逻辑" && !activeLogicTask)
@@ -683,11 +797,14 @@ function App() {
       activeProject?.messages || [],
       logicHistory,
       intakeHistory,
+      styleHistory,
+      documentHistory,
       activeProject?.selection_state.intakeSummary || "",
       assistantBusy ? busy : "",
-      activeProject?.selection_state.activeIntakeRunId || ""
+      activeProject?.selection_state.activeIntakeRunId || "",
+      activeProject?.created_at || nowIso()
     ),
-    [activeProject?.messages, logicHistory, intakeHistory, activeProject?.selection_state.intakeSummary, activeProject?.selection_state.activeIntakeRunId, assistantBusy, busy]
+    [activeProject?.messages, logicHistory, intakeHistory, styleHistory, documentHistory, activeProject?.selection_state.intakeSummary, activeProject?.selection_state.activeIntakeRunId, activeProject?.created_at, assistantBusy, busy]
   );
   const logicInputActive = Boolean(logicMarkdown && !selectedLogic);
   const styleInputActive = Boolean(selectedLogic && !selectedWritingStyle && !activeProject?.full_markdown && !isGeneratingDocument && !activeStyleTask);
@@ -807,11 +924,17 @@ function App() {
   }
 
   function normalizeProject(project: ProjectState): ProjectState {
+    const legacyMessageBase = project.steps?.revision?.updated_at || project.updated_at || project.created_at || nowIso();
+    const messages = (project.messages || []).map((message, index) => ({
+      ...message,
+      created_at: message.created_at || addSeconds(legacyMessageBase, index)
+    }));
     return {
       ...createEmptyProject(),
       ...project,
       meta: { ...defaultMeta(), ...project.meta },
       content_units: project.content_units?.length ? project.content_units : [{ name: "", selling_points: "", naming: "" }],
+      messages,
       selection_state: project.selection_state || {},
       assets: project.assets || []
     };
@@ -1176,8 +1299,14 @@ function App() {
           selectedWritingStyle: ""
         }
       });
-      setActiveProject((project) => project?.id === saved.id ? normalizedFinal : project);
-      await saveProject(normalizedFinal, false, false);
+      const finalWithHistory = withAppendedStyleHistory(normalizedFinal, {
+        id: taskId,
+        title: revisionNote ? "重新推荐文风" : "文风推荐",
+        markdown: content,
+        created_at: nowIso()
+      });
+      setActiveProject((project) => project?.id === saved.id ? finalWithHistory : project);
+      await saveProject(finalWithHistory, false, false);
       setStyleTasks((current) => {
         const next = { ...current };
         delete next[saved.id];
@@ -1257,8 +1386,16 @@ function App() {
           final_markdown: isProposal ? project.final_markdown : content
         } : project);
       });
-      setActiveProject((project) => project?.id === saved.id ? normalizeProject(finalProject) : project);
       const finalMarkdown = isProposal ? finalProject.proposal_markdown : finalProject.full_markdown;
+      const finalWithHistory = withAppendedDocumentHistory(normalizeProject(finalProject), {
+        id: `document-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: isProposal ? "提案版" : "完整版",
+        markdown: finalMarkdown,
+        version: isProposal ? "proposal" : "full",
+        created_at: nowIso()
+      });
+      setActiveProject((project) => project?.id === saved.id ? finalWithHistory : project);
+      await saveProject(finalWithHistory, false, false);
       setDraftMarkdown(finalMarkdown);
       setStreamingMarkdown("");
       setDocumentTasks((current) => {
@@ -1550,7 +1687,15 @@ function App() {
           )}
           {!loading && activeProject && !isEmptyState && (
             <>
-              <ConversationTimeline items={conversationTimeline} />
+              <ConversationTimeline
+                items={conversationTimeline}
+                project={activeProject}
+                onSwitchVersion={(version) => {
+                  patchProject({ active_version: version });
+                  setDraftMarkdown(version === "proposal" ? activeProject.proposal_markdown : activeProject.full_markdown);
+                }}
+                onExport={exportDocument}
+              />
 
               {!assistantBusy && !conversationTimeline.length && !activeProject.selection_state.intakeSummary && (
                 <div className="assistant-message">
@@ -1567,7 +1712,7 @@ function App() {
                 <MarkdownBlock title={activeStyleTask.title} markdown={activeStyleTask.markdown || activeStyleTask.message} busy />
               )}
 
-              {logicMarkdown && !activeLogicTask && (
+              {logicMarkdown && !activeLogicTask && !selectedLogic && (
                 <section className="logic-panel">
                   <div className="panel-head">
                     <div>
@@ -1601,11 +1746,11 @@ function App() {
                 </section>
               )}
 
-              {selectedLogic && styleMarkdown && !activeStyleTask && (
+              {selectedLogic && !selectedWritingStyle && styleMarkdown && !activeStyleTask && !hasArchivedStyleMarkdown && (
                 <MarkdownBlock title="文风推荐" markdown={styleMarkdown} />
               )}
 
-              {selectedLogic && styleMarkdown && !activeStyleTask && (
+              {selectedLogic && !selectedWritingStyle && styleMarkdown && !activeStyleTask && (
                 <section className="logic-panel">
                   <div className="panel-head">
                     <div>
@@ -1675,7 +1820,7 @@ function App() {
                 </div>
               )}
 
-              {activeDocumentMarkdown && !isGeneratingDocument && (
+              {activeDocumentMarkdown && !isGeneratingDocument && !hasArchivedDocumentMarkdown && (
                 <GeneratedDocument
                   project={activeProject}
                   markdown={activeDocumentMarkdown}
@@ -1705,7 +1850,7 @@ function App() {
         <div className="brief-head">
           <div>
             <span>PROJECT BRIEF</span>
-            <h2>项目信息与素材</h2>
+            <h2>项目知识库</h2>
           </div>
           <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(false)} aria-label="关闭资料栏">
             <X size={18} />
@@ -1752,7 +1897,17 @@ function App() {
   );
 }
 
-function ConversationTimeline({ items }: { items: TimelineItem[] }) {
+function ConversationTimeline({
+  items,
+  project,
+  onSwitchVersion,
+  onExport
+}: {
+  items: TimelineItem[];
+  project?: ProjectState | null;
+  onSwitchVersion?: (version: ExportVersion) => void;
+  onExport?: (version: ExportVersion, kind: "html" | "docx") => void;
+}) {
   if (!items.length) return null;
   return (
     <section className="dialogue-log" aria-label="对话记录">
@@ -1783,6 +1938,40 @@ function ConversationTimeline({ items }: { items: TimelineItem[] }) {
             <MarkdownBlock
               key={entry.key}
               title={entry.item.title || `重新推荐内容逻辑 ${index + 1}`}
+              markdown={entry.item.markdown}
+            />
+          );
+        }
+        if (entry.type === "style") {
+          return (
+            <MarkdownBlock
+              key={entry.key}
+              title={entry.item.title || "文风推荐"}
+              markdown={entry.item.markdown}
+            />
+          );
+        }
+        if (entry.type === "document") {
+          const activeMarkdown = project
+            ? entry.item.version === "proposal"
+              ? project.proposal_markdown
+              : project.full_markdown || project.final_markdown
+            : "";
+          if (project && onSwitchVersion && onExport && activeMarkdown.trim() === entry.item.markdown.trim()) {
+            return (
+              <GeneratedDocument
+                key={entry.key}
+                project={{ ...project, active_version: entry.item.version }}
+                markdown={entry.item.markdown}
+                onSwitchVersion={onSwitchVersion}
+                onExport={onExport}
+              />
+            );
+          }
+          return (
+            <MarkdownBlock
+              key={entry.key}
+              title={entry.item.title || (entry.item.version === "proposal" ? "提案版" : "完整版")}
               markdown={entry.item.markdown}
             />
           );

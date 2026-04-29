@@ -35,6 +35,7 @@ class StepResult(BaseModel):
 class ChatMessage(BaseModel):
     role: str
     content: str
+    created_at: str | None = None
     streaming: bool = False
     meta: dict[str, Any] = Field(default_factory=dict)
 
