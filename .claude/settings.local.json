@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python main.py)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://127.0.0.1:8000/docs)",
+      "Bash(curl -s http://localhost:5174)",
+      "Bash(curl -v http://127.0.0.1:5174)",
+      "Bash(curl -s http://127.0.0.1:5174)"
+    ]
+  }
+}
