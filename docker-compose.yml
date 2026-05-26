@@ -13,6 +13,12 @@ services:
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
       KIMI_MODEL: ${KIMI_MODEL:-kimi-k2.5}
+      AUTH_DB_HOST: ${AUTH_DB_HOST:-host.docker.internal}
+      AUTH_DB_PORT: ${AUTH_DB_PORT:-3306}
+      AUTH_DB_USER: ${AUTH_DB_USER:-root}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-}
+      AUTH_DB_NAME: ${AUTH_DB_NAME:-jingchuang_ai}
+      AUTH_RESET_SECRET: ${AUTH_RESET_SECRET:-}
     volumes:
       - ./outputs:/app/outputs
     restart: unless-stopped

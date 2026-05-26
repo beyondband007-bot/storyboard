@@ -59,6 +59,8 @@ class ProjectAsset(BaseModel):
 
 class ProjectState(BaseModel):
     id: str
+    owner_user_id: int | None = None
+    owner_external_id: str = ""
     meta: ProjectMeta = Field(default_factory=ProjectMeta)
     content_units: list[ContentUnit] = Field(default_factory=list)
     steps: dict[str, StepResult] = Field(default_factory=dict)

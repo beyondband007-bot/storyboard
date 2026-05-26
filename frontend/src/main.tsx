@@ -100,6 +100,20 @@ type ProjectSummary = {
   updated_at: string;
 };
 
+type AuthUser = {
+  id: string;
+  username: string;
+  displayName: string;
+  credits?: number | null;
+};
+
+type SecurityQuestion = {
+  key: string;
+  text: string;
+};
+
+type AuthMode = "login" | "register" | "forgot" | null;
+
 type ExportResponse = {
   project: ProjectState;
   filename: string;
@@ -217,7 +231,7 @@ const assetConfigs: Array<{ type: AssetType; title: string; hint: string; accept
 ];
 
 async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, options);
+  const response = await fetch(url, { credentials: "include", ...options });
   if (!response.ok) {
     const data = await response.json().catch(() => ({ detail: response.statusText }));
     throw new Error(data.detail || response.statusText);
@@ -232,6 +246,7 @@ async function streamProject(
 ): Promise<ProjectState> {
   const response = await fetch(url, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ project })
   });
@@ -750,12 +765,226 @@ function ConfirmModal({
   );
 }
 
-function OpeningPage({ onEnter }: { onEnter: () => void }) {
+function AuthDrawer({
+  mode,
+  onClose,
+  onModeChange,
+  onSuccess
+}: {
+  mode: AuthMode;
+  onClose: () => void;
+  onModeChange: (mode: AuthMode) => void;
+  onSuccess: (user: AuthUser) => void;
+}) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [securityQuestions, setSecurityQuestions] = useState<SecurityQuestion[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState(["", "", ""]);
+  const [answers, setAnswers] = useState(["", "", ""]);
+  const [challengeId, setChallengeId] = useState("");
+  const [challengeQuestion, setChallengeQuestion] = useState<SecurityQuestion | null>(null);
+  const [resetAnswer, setResetAnswer] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const isRegister = mode === "register";
+  const isForgot = mode === "forgot";
+
+  useEffect(() => {
+    if (!mode) return;
+    setIsClosing(false);
+    setError("");
+    setNotice("");
+    setPassword("");
+    setConfirmPassword("");
+    setChallengeId("");
+    setChallengeQuestion(null);
+    setResetAnswer("");
+    setNewPassword("");
+    if (mode === "register" && !securityQuestions.length) {
+      apiRequest<{ questions: SecurityQuestion[] }>("/api/auth/security-questions")
+        .then((data) => setSecurityQuestions(data.questions))
+        .catch((err) => setError(err instanceof Error ? err.message : "安全问题加载失败"));
+    }
+  }, [mode, securityQuestions.length]);
+
+  if (!mode) return null;
+
+  const requestClose = () => {
+    setIsClosing(true);
+    window.setTimeout(onClose, 300);
+  };
+
+  const updateQuestion = (index: number, value: string) => {
+    setSelectedQuestions((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+  };
+
+  const updateAnswer = (index: number, value: string) => {
+    setAnswers((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setIsSubmitting(true);
+    try {
+      if (isForgot) {
+        if (!challengeId) {
+          const result = await apiRequest<{ challengeId: string; question: SecurityQuestion }>("/api/auth/password-reset/challenge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: username.trim() })
+          });
+          setChallengeId(result.challengeId);
+          setChallengeQuestion(result.question);
+          setNotice("请回答安全问题并设置新密码。");
+          return;
+        }
+        await apiRequest<{ ok: boolean }>("/api/auth/password-reset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ challengeId, answer: resetAnswer, newPassword })
+        });
+        setNotice("密码已重置，请使用新密码登录。");
+        onModeChange("login");
+        return;
+      }
+
+      if (isRegister && password !== confirmPassword) {
+        setError("两次输入的密码不一致");
+        return;
+      }
+      const payload: Record<string, unknown> = { username: username.trim(), password };
+      if (isRegister) {
+        payload.securityQuestions = selectedQuestions.map((questionKey, index) => ({
+          questionKey,
+          answer: answers[index]
+        }));
+      }
+      const result = await apiRequest<{ user: AuthUser }>(isRegister ? "/api/auth/register" : "/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      onSuccess(result.user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "操作失败，请稍后重试");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className={`auth-drawer-layer ${isClosing ? "is-closing" : ""}`} role="presentation">
+      <button className="auth-drawer-backdrop" type="button" aria-label="关闭登录面板" onClick={requestClose} />
+      <aside className="auth-drawer" role="dialog" aria-modal="true" aria-labelledby="auth-drawer-title">
+        <button className="auth-drawer-close" type="button" aria-label="关闭" onClick={requestClose}>
+          <X size={18} />
+        </button>
+        <div className="auth-drawer-kicker">AI DIRECTOR ACCOUNT</div>
+        <h2 id="auth-drawer-title">{isRegister ? "创建账号" : isForgot ? "找回密码" : "欢迎回来"}</h2>
+        <p>{isRegister ? "注册后会写入共享账号库，并用安全问题保护找回密码流程。" : isForgot ? "输入账号，回答注册时设置的安全问题后重置密码。" : "登录后只会看到属于你的分镜项目历史。"}</p>
+        <form className="auth-form" onSubmit={submit}>
+          <label>
+            <span>用户名 / 邮箱</span>
+            <input autoFocus value={username} onChange={(event) => setUsername(event.target.value)} placeholder="请输入账号" autoComplete="username" />
+          </label>
+          {!isForgot && (
+            <label>
+              <span>密码</span>
+              <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 6 个字符" type="password" autoComplete={isRegister ? "new-password" : "current-password"} />
+            </label>
+          )}
+          {!isForgot && !isRegister && (
+            <button className="auth-forgot-password" type="button" onClick={() => onModeChange("forgot")}>
+              忘记密码？
+            </button>
+          )}
+          {isRegister && (
+            <>
+              <label>
+                <span>确认密码</span>
+                <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="请再次输入密码" type="password" autoComplete="new-password" />
+              </label>
+              <div className="auth-security-grid">
+                {[0, 1, 2].map((index) => (
+                  <div className="auth-security-item" key={index}>
+                    <label>
+                      <span>安全问题 {index + 1}</span>
+                      <select value={selectedQuestions[index]} onChange={(event) => updateQuestion(index, event.target.value)}>
+                        <option value="">请选择安全问题</option>
+                        {securityQuestions.map((question) => (
+                          <option value={question.key} key={question.key} disabled={selectedQuestions.includes(question.key) && selectedQuestions[index] !== question.key}>
+                            {question.text}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>答案</span>
+                      <input value={answers[index]} onChange={(event) => updateAnswer(index, event.target.value)} placeholder="2-80 个字符" />
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {isForgot && challengeQuestion && (
+            <>
+              <label>
+                <span>{challengeQuestion.text}</span>
+                <input value={resetAnswer} onChange={(event) => setResetAnswer(event.target.value)} placeholder="请输入安全问题答案" />
+              </label>
+              <label>
+                <span>新密码</span>
+                <input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="至少 6 个字符" type="password" autoComplete="new-password" />
+              </label>
+            </>
+          )}
+          {notice && <div className="auth-notice">{notice}</div>}
+          {error && <div className="auth-error">{error}</div>}
+          <button className="auth-submit" type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 size={17} className="spin" />}
+            <span>{isRegister ? "注册并登录" : isForgot ? challengeId ? "重置密码" : "获取安全问题" : "登录"}</span>
+          </button>
+        </form>
+        <div className="auth-mode-switch-row">
+          {isRegister ? (
+            <>
+              <span className="auth-mode-switch-label">已有账号？</span>
+              <button className="auth-mode-switch auth-mode-switch-link" type="button" onClick={() => onModeChange("login")}>去登录</button>
+            </>
+          ) : isForgot ? (
+            <>
+              <span className="auth-mode-switch-label">想起密码了？</span>
+              <button className="auth-mode-switch auth-mode-switch-link" type="button" onClick={() => onModeChange("login")}>返回登录</button>
+            </>
+          ) : (
+            <>
+              <span className="auth-mode-switch-label">还没有账号？</span>
+              <button className="auth-mode-switch auth-mode-switch-link" type="button" onClick={() => onModeChange("register")}>立即注册</button>
+            </>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function OpeningPage({ onOpenAuth }: { onOpenAuth: (mode: AuthMode) => void }) {
   const [isExiting, setIsExiting] = useState(false);
 
-  const handleEnter = () => {
+  const handleOpen = (mode: AuthMode) => {
     setIsExiting(true);
-    setTimeout(onEnter, 600);
+    window.setTimeout(() => {
+      setIsExiting(false);
+      onOpenAuth(mode);
+    }, 220);
   };
 
   return (
@@ -772,10 +1001,15 @@ function OpeningPage({ onEnter }: { onEnter: () => void }) {
         <h1 className="opening-title">AI<strong>导演</strong>工作台</h1>
         <p className="opening-subtitle">智能分镜生成 · 宣传片创作助手</p>
         <div className="opening-divider" />
-        <button className="opening-enter-btn" type="button" onClick={handleEnter}>
-          <span>进入工作台</span>
-          <ArrowRight size={16} />
-        </button>
+        <div className="opening-actions">
+          <button className="opening-enter-btn" type="button" onClick={() => handleOpen("login")}>
+            <span>登录</span>
+            <ArrowRight size={16} />
+          </button>
+          <button className="opening-enter-btn secondary" type="button" onClick={() => handleOpen("register")}>
+            <span>注册</span>
+          </button>
+        </div>
       </div>
       <span className="opening-version">v1.0</span>
     </div>
@@ -784,6 +1018,9 @@ function OpeningPage({ onEnter }: { onEnter: () => void }) {
 
 function App() {
   const [showOpening, setShowOpening] = useState(true);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [authDrawerMode, setAuthDrawerMode] = useState<AuthMode>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -893,7 +1130,25 @@ function App() {
   );
 
   useEffect(() => {
-    loadProjects().catch((err) => setError(err instanceof Error ? err.message : "项目加载失败"));
+    let mounted = true;
+    apiRequest<{ user: AuthUser }>("/api/auth/me")
+      .then((state) => {
+        if (!mounted) return;
+        setAuthUser(state.user);
+        setShowOpening(false);
+        setAuthChecked(true);
+        loadProjects().catch((err) => setError(err instanceof Error ? err.message : "项目加载失败"));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setAuthUser(null);
+        setShowOpening(true);
+        setAuthChecked(true);
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -967,6 +1222,26 @@ function App() {
     }
     booted.current = true;
     setLoading(false);
+  }
+
+  async function finishAuth(user: AuthUser) {
+    setAuthUser(user);
+    setAuthDrawerMode(null);
+    setShowOpening(false);
+    await loadProjects();
+  }
+
+  async function logoutCurrentUser() {
+    try {
+      await apiRequest<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
+    } finally {
+      setAuthUser(null);
+      setProjects([]);
+      setActiveProject(null);
+      savedSignature.current = "";
+      booted.current = false;
+      setShowOpening(true);
+    }
   }
 
   function normalizeProject(project: ProjectState): ProjectState {
@@ -1589,15 +1864,29 @@ function App() {
     if (nextProject) setActiveProject(nextProject);
   }
 
-  if (showOpening) {
-    return <OpeningPage onEnter={() => setShowOpening(false)} />;
+  if (!authChecked) {
+    return <div className="center-note app-boot-note">正在检查登录状态...</div>;
+  }
+
+  if (showOpening || !authUser) {
+    return (
+      <>
+        <OpeningPage onOpenAuth={setAuthDrawerMode} />
+        <AuthDrawer
+          mode={authDrawerMode}
+          onClose={() => setAuthDrawerMode(null)}
+          onModeChange={setAuthDrawerMode}
+          onSuccess={finishAuth}
+        />
+      </>
+    );
   }
 
     return (
     <div className={`director-app ${leftCollapsed ? "left-collapsed" : ""}`}>
       <aside className={`project-sidebar ${leftOpen ? "open" : ""} ${leftCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
-          <img src="/logo123.png" alt="" className="brand-logo" />
+          <img src="/logo.png" alt="" className="brand-logo" />
           <button
             className="icon-btn sidebar-toggle desktop-only"
             type="button"
@@ -1685,6 +1974,12 @@ function App() {
             <h1>{activeProject?.meta.project_name || "今天想把什么做成分镜？"}</h1>
           </div>
           <div className="topbar-trailing">
+            {authUser && (
+              <div className="user-chip">
+                <span>{authUser.displayName || authUser.username}</span>
+                <button type="button" onClick={logoutCurrentUser}>退出</button>
+              </div>
+            )}
             <button className="icon-btn mobile-only" type="button" onClick={() => setRightOpen(true)} aria-label="打开资料栏">
               <PanelRight size={20} />
             </button>

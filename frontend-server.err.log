@@ -1,0 +1,16 @@
+12:12:06 [vite] (client) [Unhandled rejection] Error: Project not found: ef66b142705d48599e8ae8c7965f97ae
+ > apiRequest src/main.tsx:237:10
+    235 |    if (!response.ok) {
+    236 |      const data = await response.json().catch(() => ({ detail: response.statusText }));
+    237 |      throw new Error(data.detail || response.statusText);
+        |            ^
+    238 |    }
+    239 |    return response.json() as Promise<T>;
+ > loadProjects src/main.tsx:1215:22
+ > confirmDeleteProject src/main.tsx:1291:4
+
+12:34:46 [vite] (client) [Unhandled rejection] Error: Project not found: efe40aef595440da97b127ac0dd21186
+ > apiRequest src/main.tsx?t=1779770064644:149:9
+ > loadProjects src/main.tsx?t=1779770064644:1453:20
+ > confirmDeleteProject src/main.tsx?t=1779770064644:1530:3
+

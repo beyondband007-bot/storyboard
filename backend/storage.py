@@ -30,6 +30,19 @@ def ensure_project(project: ProjectState) -> ProjectState:
     return project
 
 
+def assign_owner(project: ProjectState, user_id: int, external_id: str) -> ProjectState:
+    if project.owner_user_id is None:
+        project.owner_user_id = user_id
+    if not project.owner_external_id:
+        project.owner_external_id = external_id
+    return project
+
+
+def assert_project_owner(project: ProjectState, user_id: int) -> None:
+    if project.owner_user_id != user_id:
+        raise PermissionError("You do not have access to this project.")
+
+
 def save_project(project: ProjectState) -> ProjectState:
     project = ensure_project(project)
     folder = project_dir(project.id)
@@ -124,13 +137,15 @@ def delete_project(project_id: str) -> None:
     shutil.rmtree(folder)
 
 
-def list_projects() -> list[ProjectSummary]:
+def list_projects(user_id: int | None = None) -> list[ProjectSummary]:
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     summaries: list[ProjectSummary] = []
     for path in OUTPUTS_DIR.glob("*/project.json"):
         try:
             project = ProjectState.model_validate_json(path.read_text(encoding="utf-8"))
         except Exception:
+            continue
+        if user_id is not None and project.owner_user_id != user_id:
             continue
         summaries.append(
             ProjectSummary(
